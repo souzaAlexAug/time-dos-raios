@@ -1,0 +1,1352 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>O Mistério do Time dos Raios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@600&display=swap">
+<style>
+/* Layout: jogo em tela cheia (canvas) com interface sobreposta; visual único "escola + quadro-verde + caderno pautado + celular" */
+:root {
+  --quadro: #24493b;
+  --giz: #f5f2e6;
+  --sol: #ffc93c;
+  --sol-escuro: #e0a915;
+  --tinta: #1f2a44;
+  --tinta-suave: #55607a;
+  --papel: #fffdf6;
+  --pauta: #c6dbef;
+  --margem: #e27070;
+  --ok: #2f9e62;
+  --nao: #d24a4a;
+  --roxo: #6c4fd1;
+  --sombra: rgba(20, 28, 45, .28);
+  --f-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --f-texto: "Atkinson Hyperlegible", "Verdana", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", "Courier New", monospace;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden; background: #6fa552; color: var(--tinta);
+  font-family: var(--f-texto); font-size: 18px; line-height: 1.5;
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+}
+#jogo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+button { font: inherit; cursor: pointer; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--sol); outline-offset: 2px; }
+
+.topo { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; padding: 10px 16px; pointer-events: none; z-index: 5; }
+.objetivo { pointer-events: auto; background: var(--quadro); color: var(--giz); border: 3px solid #8a6a3f; border-radius: 10px; padding: 7px 12px; max-width: min(540px, 62vw); box-shadow: 0 4px 0 var(--sombra); min-width: 0; }
+.objetivo small { display: block; font-family: var(--f-display); font-weight: 600; color: var(--sol); letter-spacing: .06em; text-transform: uppercase; font-size: 12px; }
+.objetivo span { font-size: 15px; }
+.acoes-topo { display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; justify-content: flex-end; }
+.btn-topo { background: var(--papel); color: var(--tinta); border: 2px solid var(--tinta); border-radius: 10px; padding: 7px 12px; font-family: var(--f-display); font-weight: 600; font-size: 15px; box-shadow: 0 3px 0 var(--tinta); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn-topo:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--tinta); }
+.btn-topo .num { background: var(--sol); border-radius: 6px; padding: 0 6px; font-variant-numeric: tabular-nums; }
+
+.avisos { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 76px); transform: translateX(-50%); display: grid; gap: 6px; z-index: 30; width: min(440px, calc(100% - 32px)); pointer-events: none; }
+.aviso { background: var(--tinta); color: #fff; padding: 9px 14px; border-radius: 10px; font-family: var(--f-display); font-weight: 600; text-align: center; box-shadow: 0 4px 0 var(--sombra); animation: entra .25s ease-out; }
+.aviso.pista { background: var(--ok); }
+.aviso.erro { background: var(--nao); }
+@keyframes entra { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.interagir { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); transform: translateX(-50%); background: var(--sol); color: var(--tinta); border: 3px solid var(--tinta); border-radius: 999px; padding: 10px 20px; font-family: var(--f-display); font-weight: 700; font-size: 18px; box-shadow: 0 4px 0 var(--tinta); z-index: 6; max-width: calc(100% - 32px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.interagir kbd { background: var(--papel); border: 2px solid var(--tinta); border-radius: 6px; padding: 0 6px; margin-right: 6px; font-family: var(--f-display); }
+.toque .interagir { left: auto; right: 16px; transform: none; bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); padding: 16px 22px; }
+.toque .interagir kbd { display: none; }
+.joy { position: fixed; width: 120px; height: 120px; border-radius: 50%; background: rgba(31,42,68,.18); border: 3px solid rgba(31,42,68,.35); z-index: 4; pointer-events: none; transform: translate(-50%, -50%); }
+.joy i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: var(--papel); border: 3px solid var(--tinta); }
+.dica-toque { position: fixed; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); background: rgba(255,253,246,.85); border-radius: 10px; padding: 6px 10px; font-size: 13px; z-index: 4; pointer-events: none; }
+
+.dialogo { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(760px, calc(100% - 32px)); background: var(--quadro); color: var(--giz); border: 6px solid #8a6a3f; border-radius: 14px; padding: 14px 18px 16px; z-index: 10; box-shadow: 0 8px 0 var(--sombra), inset 0 0 40px rgba(0,0,0,.25); }
+.dialogo .quem { font-family: var(--f-display); font-weight: 700; font-size: 21px; color: var(--sol); }
+.dialogo .quem small { font-family: var(--f-texto); font-weight: 400; color: #bcd3c6; font-size: 14px; margin-left: 8px; }
+.dialogo .fala { font-size: 21px; min-height: 3.2em; margin-top: 4px; }
+.dialogo .seguir { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.btn-giz { background: transparent; color: var(--giz); border: 2px dashed rgba(245,242,230,.7); border-radius: 10px; padding: 6px 14px; font-family: var(--f-display); font-weight: 600; font-size: 16px; }
+.escolhas { display: grid; gap: 8px; margin-top: 10px; }
+.escolha { text-align: left; background: var(--papel); color: var(--tinta); border: 2px solid var(--tinta); border-radius: 10px; padding: 10px 14px; font-size: 16px; box-shadow: 0 3px 0 var(--tinta); }
+.escolha:hover { background: #fff3c9; }
+
+.fundo-modal { position: fixed; inset: 0; background: rgba(20,28,45,.55); z-index: 20; display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.folha { width: min(760px, 100%); max-height: calc(100% - 8px); overflow-y: auto; background: var(--papel); border-radius: 14px; box-shadow: 0 10px 0 var(--sombra); position: relative; min-width: 0; background-image: linear-gradient(transparent 31px, var(--pauta) 32px); background-size: 100% 32px; padding: 20px 22px 20px 54px; }
+.folha::before { content: ""; position: absolute; left: 38px; top: 0; bottom: 0; width: 2px; background: var(--margem); }
+.folha h2 { font-family: var(--f-display); font-weight: 700; font-size: 27px; margin: 0 0 4px; line-height: 1.15; text-wrap: balance; }
+.folha .sub { color: var(--tinta-suave); margin: 0 0 14px; }
+.folha p { margin: 0 0 12px; }
+.linha-botoes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.btn { background: var(--sol); color: var(--tinta); border: 2px solid var(--tinta); border-radius: 10px; padding: 10px 18px; font-family: var(--f-display); font-weight: 700; font-size: 17px; box-shadow: 0 3px 0 var(--tinta); }
+.btn.sec { background: var(--papel); }
+.btn.ok { background: var(--ok); color: #fff; }
+.btn.nao { background: var(--nao); color: #fff; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--tinta); }
+.rotulo { font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-suave); margin: 0 0 6px; }
+.explica { border-left: 4px solid var(--sol); background: #fff8dd; padding: 8px 12px; border-radius: 0 8px 8px 0; margin-top: 12px; }
+.explica.bom { border-color: var(--ok); background: #e3f5ea; }
+.explica.ruim { border-color: var(--nao); background: #fbe4e4; }
+.selo-puzzle { display: inline-block; font-family: var(--f-display); font-weight: 600; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; background: var(--roxo); color: #fff; border-radius: 6px; padding: 2px 8px; margin-bottom: 6px; }
+
+.capa { background: var(--quadro); color: var(--giz); background-image: none; padding: 26px 26px 22px; border: 8px solid #8a6a3f; }
+.capa::before { display: none; }
+.capa .selo { display: inline-block; font-family: var(--f-display); font-weight: 600; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--quadro); background: var(--sol); border-radius: 6px; padding: 2px 8px; }
+.capa h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(34px, 7vw, 54px); line-height: 1; margin: 12px 0 10px; text-wrap: balance; }
+.capa h1 em { font-style: normal; color: var(--sol); }
+.capa p { color: #dfe9e2; max-width: 62ch; }
+.capa .controles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 16px 0 4px; }
+.capa .controles div { border: 2px dashed rgba(245,242,230,.5); border-radius: 10px; padding: 8px 12px; font-size: 15px; }
+.capa .controles b { font-family: var(--f-display); color: var(--sol); display: block; }
+
+.pista { padding: 0 0 32px; position: relative; min-height: 64px; }
+.pista h3 { font-family: var(--f-display); font-size: 19px; margin: 0; line-height: 32px; }
+.pista p { margin: 0; line-height: 32px; }
+.pista.falta { color: #8b93a6; }
+.pista .n { position: absolute; left: -40px; top: 0; width: 28px; text-align: center; font-family: var(--f-display); font-weight: 700; color: var(--margem); line-height: 32px; }
+
+/* fichas de palavras (frase) e de senha */
+.frase-area { display: flex; flex-wrap: wrap; gap: 8px; min-height: 56px; padding: 10px; border: 2px dashed var(--tinta-suave); border-radius: 10px; background: rgba(255,255,255,.75); align-content: flex-start; }
+.frase-area .vazio { color: var(--tinta-suave); font-style: italic; }
+.banco { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ficha { background: #fff3c9; border: 2px solid var(--tinta); border-radius: 8px; padding: 6px 12px; font-family: var(--f-display); font-weight: 600; font-size: 18px; box-shadow: 0 3px 0 var(--tinta); }
+.ficha:nth-child(3n) { background: #d9ecff; }
+.ficha:nth-child(3n+1) { background: #e3f5ea; }
+.ficha.colocada { box-shadow: none; background: #fff; }
+.ficha.certa { background: #d8f2e3; border-color: var(--ok); }
+
+/* perfis */
+.perfis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .perfis { grid-template-columns: 1fr; } }
+.perfil { background: #fff; border: 2px solid var(--tinta); border-radius: 12px; padding: 12px; min-width: 0; }
+.perfil .cab { display: flex; gap: 10px; align-items: center; }
+.perfil .foto { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #f9a24b, #e0538b); display: grid; place-items: center; color: #fff; font-family: var(--f-display); font-weight: 700; font-size: 22px; flex: none; }
+.perfil b { font-family: var(--f-display); display: block; overflow-wrap: anywhere; }
+.perfil small { color: var(--tinta-suave); }
+.perfil ul { margin: 8px 0 0; padding-left: 18px; font-size: 15px; }
+.perfil .post { background: #f3f4f7; border-radius: 8px; padding: 6px 8px; margin-top: 6px; font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip { background: #fff; border: 2px solid var(--tinta); border-radius: 999px; padding: 6px 12px; font-size: 15px; text-align: left; }
+.chip[aria-pressed="true"] { background: var(--sol); }
+.chip.certo { background: #d8f2e3; border-color: var(--ok); }
+.chip.errado { background: #fbe0e0; border-color: var(--nao); }
+.chip.faltou { border-style: dashed; border-color: var(--ok); }
+
+/* caça-palavras */
+.caca { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 14px; align-items: start; }
+@media (max-width: 600px) { .caca { grid-template-columns: 1fr; } }
+.grade { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; max-width: 440px; width: 100%; }
+.cel { aspect-ratio: 1; border: 1.5px solid #b9c3d3; background: #fff; border-radius: 6px; font-family: var(--f-mono); font-weight: 600; font-size: clamp(13px, 3.4vw, 18px); padding: 0; display: grid; place-items: center; }
+.cel.ini { background: var(--sol); border-color: var(--tinta); }
+.cel.achada { background: #bfe8cf; border-color: var(--ok); }
+.palavras { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.palavras li { font-family: var(--f-display); font-weight: 600; letter-spacing: .05em; }
+.palavras li.ok { color: var(--ok); text-decoration: line-through; }
+
+/* cadeado */
+.charadas { margin: 0 0 12px; padding-left: 20px; }
+.charadas li { margin-bottom: 6px; }
+.cadeado { display: flex; justify-content: center; gap: 12px; padding: 14px; background: #2b2f3a; border-radius: 16px; width: fit-content; margin: 8px auto; border: 4px solid #8d93a3; }
+.roda { display: grid; gap: 6px; justify-items: center; }
+.roda button { background: #4a5163; color: #fff; border: 0; border-radius: 8px; width: 54px; height: 34px; font-size: 18px; }
+.roda .dig { width: 54px; height: 64px; background: #f6f2e4; border-radius: 8px; display: grid; place-items: center; font-family: var(--f-mono); font-size: 36px; color: var(--tinta); }
+.roda .dig.certo { background: #bfe8cf; }
+.treme { animation: treme .35s; }
+@keyframes treme { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+/* senha */
+.senha-saida { font-family: var(--f-mono); font-size: 24px; background: #20283a; color: #9be7a8; border-radius: 10px; padding: 12px 14px; min-height: 30px; overflow-wrap: anywhere; letter-spacing: .04em; }
+.regras { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; }
+.regras li::before { content: "○ "; color: var(--tinta-suave); font-weight: 700; }
+.regras li.ok { color: var(--ok); }
+.regras li.ok::before { content: "✓ "; color: var(--ok); }
+.regras li.proibido { color: var(--nao); }
+.regras li.proibido::before { content: "✗ "; color: var(--nao); }
+
+/* opções e provas */
+.opcoes { display: grid; gap: 10px; }
+.opcao { text-align: left; background: #fff; border: 2px solid var(--tinta); border-radius: 10px; padding: 12px 14px; font-size: 16px; box-shadow: 0 3px 0 var(--tinta); }
+.opcao.certa { background: #d8f2e3; border-color: var(--ok); }
+.opcao.errada { background: #fbe0e0; border-color: var(--nao); }
+.provas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 600px) { .provas { grid-template-columns: 1fr; } }
+.prova { text-align: left; background: #fffaf0; border: 2px solid var(--tinta); border-radius: 10px; padding: 10px 12px; font-size: 15px; box-shadow: 0 3px 0 var(--tinta); position: relative; }
+.prova[aria-pressed="true"] { background: var(--sol); }
+.prova.certo { background: #d8f2e3; border-color: var(--ok); }
+.prova.errado { background: #fbe0e0; border-color: var(--nao); }
+.prova .tag { display: block; font-family: var(--f-display); font-size: 13px; font-weight: 700; margin-top: 4px; }
+.progresso { display: flex; gap: 6px; margin-bottom: 10px; }
+.progresso i { flex: 1; height: 8px; border-radius: 4px; background: #e2e5ec; }
+.progresso i.feito { background: var(--sol-escuro); }
+
+.certificado { text-align: center; border: 4px double var(--tinta); border-radius: 12px; padding: 18px 14px; background: #fff; margin: 6px 0 12px; }
+.certificado .t { font-family: var(--f-display); font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-suave); }
+.certificado .nome { font-family: var(--f-display); font-weight: 700; font-size: 30px; border-bottom: 2px solid var(--tinta); display: inline-block; min-width: 60%; padding: 0 10px; margin: 6px 0; overflow-wrap: anywhere; }
+.certificado input { font: inherit; font-size: 16px; padding: 8px 10px; border: 2px solid var(--tinta); border-radius: 8px; width: min(320px, 100%); margin-top: 8px; }
+.ajuda-box { background: var(--quadro); color: var(--giz); border-radius: 10px; padding: 12px 14px; margin-top: 10px; }
+.ajuda-box b { color: var(--sol); font-family: var(--f-display); }
+@media (max-width: 520px) {
+  body { font-size: 16px; }
+  .folha { padding: 16px 14px 16px 44px; }
+  .folha::before { left: 30px; }
+  .pista .n { left: -36px; }
+  .dialogo .fala { font-size: 17px; }
+  .objetivo { max-width: 100%; }
+  .topo { flex-direction: column; }
+  .avisos { top: calc(env(safe-area-inset-top, 0px) + 132px); }
+}
+.linha-selo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.btn-ouvir { background: #fff; border: 2px solid var(--roxo); color: var(--roxo); border-radius: 999px; padding: 3px 12px; font-family: var(--f-display); font-weight: 600; font-size: 15px; }
+.pergunta { font-size: 24px !important; }
+.opcoes.grandes .opcao { font-size: 20px; padding: 14px 16px; }
+.btn.grande { font-size: 20px; padding: 14px 10px; }
+.frase-area.vertical, .banco.vertical { flex-direction: column; align-items: stretch; }
+.banco.vertical .ficha, .frase-area.vertical .ficha { text-align: left; font-size: 17px; }
+.chat { background: #e9e3d7; border-radius: 12px; overflow: hidden; border: 2px solid var(--tinta); }
+.chat-topo { background: #3d5a99; color: #fff; padding: 10px 14px; display: flex; gap: 10px; align-items: center; }
+.chat-topo .av { width: 36px; height: 36px; border-radius: 50%; background: var(--sol); color: var(--tinta); display: grid; place-items: center; font-size: 20px; }
+.chat-topo b { font-family: var(--f-display); display: block; line-height: 1.1; }
+.chat-topo small { opacity: .85; }
+.chat-corpo { padding: 14px; display: grid; gap: 10px; min-height: 110px; max-height: 38vh; overflow-y: auto; }
+.bolha { background: #fff; border-radius: 4px 12px 12px 12px; padding: 8px 12px; max-width: 88%; box-shadow: 0 1px 0 rgba(0,0,0,.12); justify-self: start; min-width: 0; }
+.bolha .autor { font-family: var(--f-display); font-weight: 600; font-size: 15px; }
+.bolha .txt { font-size: 19px; overflow-wrap: anywhere; }
+.etq { display: inline-block; font-size: 14px; font-weight: 700; border-radius: 6px; padding: 1px 8px; margin-top: 4px; color: #fff; }
+.etq.ajuda { background: var(--ok); }
+.etq.machuca { background: var(--nao); }
+.chat-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: #fff; border-top: 2px solid var(--tinta); min-height: 20px; }
+.memoria { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-width: 560px; margin: 0 auto; }
+@media (max-width: 520px) { .memoria { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.carta { aspect-ratio: 3 / 4; border: 3px solid var(--tinta); border-radius: 12px; background: var(--roxo); color: #fff; display: grid; place-items: center; align-content: center; gap: 4px; padding: 6px; box-shadow: 0 4px 0 var(--tinta); min-width: 0; }
+.carta .verso { font-size: 34px; }
+.carta.aberta { background: #fff; color: var(--tinta); }
+.carta.par { background: #d8f2e3; border-color: var(--ok); }
+.carta .icone { font-size: 34px; line-height: 1; }
+.carta .legenda { font-family: var(--f-display); font-weight: 600; font-size: 14px; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .aviso, .treme { animation: none; } }
+</style>
+</head><body>
+
+<canvas id="jogo" aria-label="Mapa da escola"></canvas>
+<div class="topo">
+  <div class="objetivo"><small>Próximo passo</small><span id="objetivoTexto">Comece a investigação</span></div>
+  <div class="acoes-topo">
+    <button class="btn-topo" id="btnCaderno" type="button">Caderno <span class="num" id="contPistas">0/6</span></button>
+    <button class="btn-topo" id="btnSom" type="button" aria-pressed="true">Som: ligado</button>
+    <button class="btn-topo" id="btnMenu" type="button">Menu</button>
+  </div>
+</div>
+<div class="avisos" id="avisos" aria-live="polite"></div>
+<button class="interagir" id="interagir" type="button" hidden><kbd>E</kbd><span id="interagirTexto">Conversar</span></button>
+<div class="joy" id="joy" hidden><i id="joyBola"></i></div>
+<div class="dica-toque" id="dicaToque" hidden>Arraste o dedo na tela para andar</div>
+<div class="dialogo" id="dialogo" hidden role="dialog" aria-live="polite">
+  <div class="quem" id="dlgQuem"></div>
+  <div class="fala" id="dlgFala"></div>
+  <div class="escolhas" id="dlgEscolhas"></div>
+  <div class="seguir"><button class="btn-giz" id="dlgOuvir" type="button">🔊 Ouvir</button><button class="btn-giz" id="dlgSeguir" type="button">Continuar ▸</button></div>
+</div>
+<div id="modais"></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ===================================================================
+   HISTÓRIA: O Mistério do Time dos Raios (9 e 10 anos)
+   =================================================================== */
+const HIST = {
+  titulo: "O Mistério do Time dos Raios",
+  intro: [
+    "No 4º ano, quase todo mundo joga BlocoMundo, um jogo online. O time da turma se chama Os Raios.",
+    "Mas a Nina saiu do time. No chat do jogo, começaram a chamar ela de 'Nina Tartaruga'.",
+    "Agora a Nina não quer mais jogar e fica sozinha no recreio. Você é Agente Mirim da Escola Conectada. Descubra o que aconteceu e ajude a turma!"
+  ],
+  obrigatorias: ["Sentimento", "ChatDoJogo", "ViuNoTablet", "RegraDaTurma", "ConversaPipo", "DesculpasCaio"],
+  pistas: {
+    Sentimento: { nome: "Como a Nina se sente", desc: "A Nina está triste e com vergonha. Ela perdeu uma partida e, depois disso, começaram os apelidos." },
+    ChatDoJogo: { nome: "O chat do time", desc: "No chat do time, o Caio escreveu 'Nina Tartaruga' primeiro. Outros copiaram e mandaram figurinhas rindo." },
+    ViuNoTablet: { nome: "O que o Tio Zé viu", desc: "No recreio, o Tio Zé viu o Pipo tirar a Nina do time pelo tablet, enquanto os outros riam." },
+    RegraDaTurma: { nome: "A regra da turma", desc: "No jogo e na escola, todo mundo merece respeito. Apelido que machuca não é brincadeira." },
+    ConversaPipo: { nome: "Conversa com o Pipo", desc: "O Pipo tirou a Nina do time porque todo mundo estava rindo. Ele não pensou em como ela ia se sentir e quer chamar ela de volta." },
+    DesculpasCaio: { nome: "O pedido de desculpas", desc: "O Caio inventou o apelido sem pensar. Ele entendeu que magoou a Nina e quer pedir desculpas." }
+  },
+  npcs: {
+    Nina: { nome: "Nina", papel: "4º ano", estados: [
+      { requer: ["DesculpasCaio"], falas: ["O Caio me pediu desculpas! E o Pipo me chamou de volta pro time.", "Obrigada por me ajudar, Agente!"] },
+      { requer: ["Sentimento"], falas: ["A Bela é minha melhor amiga. Ela viu o chat do jogo.", "Ela está no pátio coberto."] },
+      { requer: [], entrevista: { concede: "Sentimento", etapas: [
+        { falas: ["...", "(A Nina está sentada sozinha. Ela parece triste.)"] },
+        { falas: ["(O que você diz?)"], opcoes: [
+          { texto: "Oi, Nina Tartaruga! Kkk", correta: false, resposta: ["(A Nina esconde o rosto.)", "Esse apelido machuca. Tente de novo, com carinho."] },
+          { texto: "Oi, Nina. Você está bem? Posso sentar aqui?", correta: true, resposta: ["...Pode.", "Ninguém quer mais jogar comigo."] },
+          { texto: "Para de chorar, é só um jogo.", correta: false, resposta: ["(A Nina fica ainda mais triste.)", "O que a gente sente é importante. Tente de novo."] }
+        ] },
+        { falas: ["Vamos entender como a Nina está se sentindo?"], puzzle: "emocoes" },
+        { falas: ["É isso mesmo. Eu fiquei muito triste.", "Eu perdi uma partida no jogo. Depois disso, começaram a me chamar de tartaruga.", "E aí me tiraram do time. Eu não quero mais jogar."] }
+      ] } }
+    ] },
+    Bela: { nome: "Bela", papel: "Amiga da Nina", estados: [
+      { requer: ["ChatDoJogo"], falas: ["Eu contei tudo pra Profa. Lúcia. Ela está na Sala do 4º ano.", "Ela sempre ajuda a gente."] },
+      { requer: ["Sentimento"], entrevista: { concede: "ChatDoJogo", etapas: [
+        { falas: ["Você falou com a Nina? Que bom!", "Eu tirei print do chat do jogo. Mas tem mensagem boa e mensagem ruim misturadas.", "Me ajuda a separar?"], puzzle: "gentil" },
+        { falas: ["Isso! Olha aqui: quem escreveu 'Nina Tartaruga' primeiro foi o Caio.", "Depois todo mundo copiou e mandou figurinha rindo.", "Guardar o print e mostrar pra um adulto é o certo, né?"] }
+      ] } },
+      { requer: [], falas: ["Oi! Eu sou a Bela.", "Estou preocupada com a Nina. Fala com ela primeiro? Ela está no cantinho perto do muro."] }
+    ] },
+    TioZe: { nome: "Tio Zé", papel: "Zelador", estados: [
+      { requer: ["ViuNoTablet"], falas: ["O Pipo é um bom menino. Acho que ele só foi atrás dos outros.", "Ele está na Sala de Informática."] },
+      { requer: ["Sentimento"], entrevista: { concede: "ViuNoTablet", etapas: [
+        { falas: ["Oi, Agente! Eu cuido da escola e vejo muita coisa.", "Mas primeiro, um jogo! Ache os pares das regras de ouro."], puzzle: "memoria" },
+        { falas: ["Muito bem, memória boa!", "Agora escuta: no recreio eu vi o Pipo com o tablet.", "Ele tirou a Nina do time enquanto os outros riam. Ela foi embora chorando."] }
+      ] } },
+      { requer: [], falas: ["Bom dia! Cuidado pra não escorregar, acabei de varrer.", "Se precisar de ajuda, é só chamar."] }
+    ] },
+    ProfaLucia: { nome: "Profa. Lúcia", papel: "Professora do 4º ano", estados: [
+      { requer: ["RegraDaTurma"], falas: ["Respeito vale no jogo, no grupo e na escola.", "Agora converse com o Pipo e com o Caio. Ouvir os dois lados é importante."] },
+      { requer: ["ChatDoJogo"], entrevista: { concede: "RegraDaTurma", etapas: [
+        { falas: ["A Bela me mostrou o print. Fico triste que isso aconteceu.", "No começo do ano, a turma criou umas regras. Me ajuda a completar?"], puzzle: "completar" },
+        { falas: ["Perfeito! Apelido que machuca não é brincadeira.", "E quem ri e manda figurinha também está ajudando a machucar."] }
+      ] } },
+      { requer: [], falas: ["Olá! Hoje a aula é sobre amizade.", "Se alguém da turma estiver triste, me conta, tá?"] }
+    ] },
+    Pipo: { nome: "Pipo", papel: "4º ano", estados: [
+      { requer: ["ConversaPipo"], falas: ["Já chamei a Nina de volta pro time!", "Da próxima vez eu penso antes de seguir os outros."] },
+      { requer: ["ViuNoTablet"], entrevista: { concede: "ConversaPipo", etapas: [
+        { falas: ["Fui eu que tirei a Nina do time... Mas todo mundo estava rindo!", "Eu nem lembro direito como tudo começou. Me ajuda a lembrar?"], puzzle: "sequencia" },
+        { falas: ["Nossa... vendo assim, foi muito chato com ela.", "Eu só fui atrás dos outros. Não pensei em como ela ia se sentir.", "Vou chamar a Nina de volta pro time agora mesmo!"] }
+      ] } },
+      { requer: [], falas: ["Oi! Tô montando uma casa no BlocoMundo.", "Agora não posso conversar."] }
+    ] },
+    Caio: { nome: "Caio", papel: "4º ano", estados: [
+      { requer: ["DesculpasCaio"], falas: ["Pedi desculpas pra Nina. Ela me desculpou!", "Agora a gente joga junto de novo."] },
+      { requer: ["ChatDoJogo", "ViuNoTablet", "RegraDaTurma", "ConversaPipo"], entrevista: { concede: "DesculpasCaio", etapas: [
+        { falas: ["O quê? 'Nina Tartaruga'? Era só uma brincadeira!", "Todo mundo achou engraçado..."] },
+        { falas: ["(O que você responde?)"], opcoes: [
+          { texto: "Você é muito mau! Ninguém mais vai jogar com você!", correta: false, resposta: ["(O Caio fica bravo e vai embora.)", "Brigar não resolve. Tente ajudar o Caio a entender."] },
+          { texto: "Brincadeira é quando todo mundo ri. A Nina ficou triste e saiu do jogo.", correta: true, resposta: ["...Eu não sabia que ela tinha ficado assim.", "Eu quero pedir desculpas. Mas não sei o que dizer..."] }
+        ] },
+        { falas: ["Ajude o Caio a montar o pedido de desculpas."], puzzle: "desculpas" },
+        { falas: ["Vou falar isso pra ela agora!", "E nunca mais vou inventar apelido que machuca."] }
+      ] } },
+      { requer: [], falas: ["Bora jogar bola?", "Hoje eu vou fazer um gol!"] }
+    ] },
+    DiretoraRosa: { nome: "Diretora Rosa", papel: "Diretora", estados: [
+      { requer: "TODAS", abreFinal: true, falas: ["Você encontrou todas as pistas da investigação!", "Agora responda três perguntas para fechar o caso."] },
+      { requer: ["Sentimento"], falas: ["Que bom que você conversou com a Nina.", "Quando tiver todas as pistas, volte aqui."] },
+      { requer: [], falas: ["Olá, Agente Mirim! Eu sou a Diretora Rosa.", "A Nina está triste. Vá conversar com ela, no cantinho perto do muro."] }
+    ] }
+  },
+  final: {
+    perguntas: [
+      { pergunta: "Quem inventou o apelido 'Nina Tartaruga'?", opcoes: ["O Pipo", "O Caio", "A Bela"], correta: 1, explicacao: "O print da Bela mostra que o Caio escreveu primeiro." },
+      { pergunta: "Rir e mandar figurinha de um apelido que machuca é...", opcoes: ["Só brincadeira", "Também machucar a pessoa", "Legal"], correta: 1, explicacao: "Quem ri junto também ajuda a machucar." },
+      { pergunta: "O que fazer quando alguém é tratado mal no jogo?", opcoes: ["Rir junto", "Apoiar a pessoa e contar para um adulto", "Sair sem falar nada"], correta: 1, explicacao: "Apoiar quem sofre e contar para um adulto ajuda a resolver." }
+    ],
+    vitoria: [
+      "O Caio pediu desculpas, o Pipo chamou a Nina de volta e o time Os Raios criou uma regra: no nosso time, ninguém fica de fora.",
+      "A Nina voltou a jogar e a brincar no recreio.",
+      "Lembre-se: fale com gentileza, pare e pense antes de enviar, e conte para um adulto se alguém for tratado mal."
+    ]
+  }
+};
+
+/* ===================================================================
+   DESAFIOS (dados)
+   =================================================================== */
+const PZ = {
+  emocoes: {
+    titulo: "Como a Nina se sente?",
+    instrucao: "Escolha a carinha que mostra o sentimento da Nina em cada momento.",
+    rotuloItem: "Momento",
+    situacoes: [
+      { texto: "Quando leu 'Nina Tartaruga' no chat do jogo.", opcoes: ["😄 Feliz", "😢 Triste", "😴 Com sono"], correta: 1, explicacao: "Apelidos que zombam deixam a gente triste." },
+      { texto: "Quando foi tirada do time sem ninguém avisar.", opcoes: ["🥳 Animada", "😋 Com fome", "😔 Sozinha"], correta: 2, explicacao: "Ser deixado de fora faz a pessoa se sentir sozinha." },
+      { texto: "Quando você sentou perto dela para conversar.", opcoes: ["🙂 Um pouco melhor", "😡 Com raiva de você", "😱 Assustada"], correta: 0, explicacao: "Quando alguém nos escuta com carinho, a gente se sente melhor." }
+    ],
+    fim: "Entender o que o outro sente se chama empatia. É o primeiro passo para ajudar."
+  },
+  gentil: {
+    titulo: "Mensagens do chat",
+    instrucao: "Leia cada mensagem. Ela é gentil ou machuca?",
+    itens: [
+      { autor: "Bela", texto: "Boa jogada, Nina!", machuca: false, porque: "Elogiar faz bem." },
+      { autor: "Caio", texto: "Nina Tartaruga kkk 🐢", machuca: true, porque: "Apelido para zombar machuca." },
+      { autor: "Leo", texto: "Manda mais figurinha de tartaruga!", machuca: true, porque: "Espalhar a zoeira machuca ainda mais." },
+      { autor: "Bela", texto: "Para com isso, não tem graça.", machuca: false, porque: "Defender um amigo é uma atitude gentil e corajosa." },
+      { autor: "Pipo", texto: "Tira ela do time.", machuca: true, porque: "Deixar alguém de fora de propósito machuca." },
+      { autor: "Mia", texto: "Nina, vamos jogar juntas amanhã?", machuca: false, porque: "Convidar alguém faz a pessoa se sentir querida." }
+    ]
+  },
+  memoria: {
+    titulo: "Jogo da memória",
+    instrucao: "Vire duas cartas de cada vez e encontre os 4 pares das regras de ouro.",
+    pares: [
+      { icone: "🔒", texto: "Senha é segredo" },
+      { icone: "🙋", texto: "Peça ajuda a um adulto" },
+      { icone: "💬", texto: "Fale com gentileza" },
+      { icone: "🛑", texto: "Pare e pense antes de enviar" }
+    ]
+  },
+  completar: {
+    titulo: "As regras da turma",
+    instrucao: "Escolha a palavra que completa cada regra.",
+    rotuloItem: "Regra",
+    situacoes: [
+      { texto: "Antes de enviar uma mensagem, eu ____.", opcoes: ["grito", "penso", "corro"], correta: 1, explicacao: "Antes de enviar, eu penso: isso pode magoar alguém?" },
+      { texto: "Se alguém me trata mal no jogo, eu ____ um adulto.", opcoes: ["aviso", "escondo de", "esqueço"], correta: 0, explicacao: "Avisar um adulto de confiança é a melhor saída." },
+      { texto: "Apelido que machuca ____ brincadeira.", opcoes: ["é", "sempre é", "não é"], correta: 2, explicacao: "Brincadeira boa é quando todo mundo se diverte." }
+    ],
+    fim: "Essas regras valem na escola e também no jogo online."
+  },
+  sequencia: {
+    titulo: "O que aconteceu primeiro?",
+    instrucao: "Toque nos acontecimentos na ordem certa, do primeiro ao último.",
+    rotuloArea: "A história em ordem",
+    rotuloBanco: "Acontecimentos",
+    dica: "Dica: tudo começou com uma partida do jogo.",
+    vertical: true,
+    ordens: [[
+      "A Nina perdeu uma partida",
+      "O Caio escreveu 'Nina Tartaruga'",
+      "Todos copiaram e riram",
+      "O Pipo tirou a Nina do time"
+    ]],
+    sucesso: "Uma piada que parece pequena pode crescer quando muitos entram junto. Por isso, cada um pode ajudar a parar."
+  },
+  desculpas: {
+    titulo: "Pedido de desculpas",
+    instrucao: "Toque nas palavras na ordem certa para montar o pedido de desculpas do Caio.",
+    rotuloArea: "O pedido do Caio",
+    rotuloBanco: "Palavras",
+    dica: "Dica: comece pedindo desculpas e dizendo o nome dela.",
+    ordens: [
+      ["Desculpa,", "Nina.", "Eu", "errei.", "Volta", "pro", "time?"]
+    ],
+    sucesso: "Um bom pedido de desculpas reconhece o erro e tenta consertar."
+  }
+};
+
+/* ===================================================================
+   ESTADO
+   =================================================================== */
+const CHAVE = "misterioTimeRaios_v1";
+const estado = { pistas: new Set(), concluido: false };
+function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify({ pistas: [...estado.pistas], concluido: estado.concluido })); } catch (e) {} }
+function carregarSalvo() { try { const d = JSON.parse(localStorage.getItem(CHAVE) || "null"); return d && Array.isArray(d.pistas) ? d : null; } catch (e) { return null; } }
+const tem = id => estado.pistas.has(id);
+const temTodas = lista => lista === "TODAS" ? HIST.obrigatorias.every(tem) : (lista || []).every(tem);
+
+/* ===================================================================
+   MAPA DA ESCOLA
+   =================================================================== */
+const MUNDO = { w: 1600, h: 1100 };
+const T = 16;
+const solidos = [], paredes = [], moveis = [], altos = [], pisos = [], placas = [];
+function solido(x, y, w, h) { solidos.push({ x, y, w, h }); }
+function parede(x, y, w, h, tipo) { paredes.push({ x, y, w, h, tipo: tipo || "sala" }); solido(x, y, w, h); }
+function movel(x, y, w, h, cor, opts) { const m = Object.assign({ x, y, w, h, cor }, opts || {}); moveis.push(m); if (m.solido !== false) solido(x, y, w, h); return m; }
+
+const SALAS = {
+  sala7A: { x: 80, y: 60, w: 400, h: 300, porta: "S", nome: "Sala do 4º ano", piso: "madeira" },
+  bib:    { x: 560, y: 60, w: 400, h: 300, porta: "S", nome: "Sala de Leitura", piso: "carpete" },
+  lab:    { x: 1040, y: 60, w: 400, h: 300, porta: "S", nome: "Sala de Informática", piso: "azulejo" },
+  coord:  { x: 60, y: 480, w: 360, h: 320, porta: "L", nome: "Diretoria", piso: "taco" }
+};
+function sala(r) {
+  const vao = 92;
+  pisos.push({ x: r.x, y: r.y, w: r.w, h: r.h, tipo: r.piso });
+  parede(r.x, r.y, r.w, T, "janela");
+  parede(r.x, r.y, T, r.h);
+  if (r.porta === "S") {
+    const cx = r.x + r.w / 2;
+    parede(r.x, r.y + r.h - T, cx - vao / 2 - r.x, T);
+    parede(cx + vao / 2, r.y + r.h - T, r.x + r.w - (cx + vao / 2), T);
+    parede(r.x + r.w - T, r.y, T, r.h);
+    placas.push({ x: cx, y: r.y + r.h + 14, texto: r.nome });
+  } else {
+    const cy = r.y + r.h / 2;
+    parede(r.x, r.y + r.h - T, r.w, T);
+    parede(r.x + r.w - T, r.y, T, cy - vao / 2 - r.y);
+    parede(r.x + r.w - T, cy + vao / 2, T, r.y + r.h - (cy + vao / 2));
+    placas.push({ x: r.x + r.w + 62, y: cy - 58, texto: r.nome });
+  }
+}
+function montarEscola() {
+  parede(20, 20, MUNDO.w - 40, 18, "muro");
+  parede(20, 20, 18, MUNDO.h - 40, "muro");
+  parede(MUNDO.w - 38, 20, 18, MUNDO.h - 40, "muro");
+  parede(20, MUNDO.h - 38, 730, 18, "muro");
+  parede(850, MUNDO.h - 38, MUNDO.w - 870, 18, "muro");
+  solido(-50, -50, MUNDO.w + 100, 50); solido(-50, MUNDO.h, MUNDO.w + 100, 50);
+  solido(-50, 0, 50, MUNDO.h); solido(MUNDO.w, 0, 50, MUNDO.h);
+
+  pisos.push({ x: 1110, y: 470, w: 400, h: 520, tipo: "quadraMargem" });
+  pisos.push({ x: 1130, y: 490, w: 360, h: 480, tipo: "quadra" });
+  pisos.push({ x: 38, y: 850, w: 380, h: 212, tipo: "grama" });
+  Object.values(SALAS).forEach(sala);
+
+  // Sala 7º A
+  const S = SALAS.sala7A;
+  movel(S.x + 110, S.y + T, 180, 10, "#2b5a48", { tipo: "quadro", texto: "Hoje: Amizade" });
+  movel(S.x + 300, S.y + 60, 70, 34, "#8a5a33", { tipo: "mesa" });
+  for (let c = 0; c < 4; c++) for (let l = 0; l < 3; l++) movel(S.x + 50 + c * 88, S.y + 125 + l * 58, 44, 24, "#d2a46b", { tipo: "carteira" });
+
+  // Biblioteca
+  const B = SALAS.bib;
+  movel(B.x + 40, B.y + T, 320, 22, "#7a4f2c", { tipo: "estante" });
+  movel(B.x + 40, B.y + 90, 110, 20, "#7a4f2c", { tipo: "estante" });
+  movel(B.x + 200, B.y + 90, 110, 20, "#7a4f2c", { tipo: "estante" });
+  moveis.push({ x: B.x + 70, y: B.y + 150, w: 260, h: 110, tipo: "tapete" });
+  [[B.x + 100, B.y + 175, "#ff7aa8"], [B.x + 200, B.y + 165, "#5ec27a"], [B.x + 290, B.y + 185, "#4aa3df"], [B.x + 150, B.y + 235, "#ffe066"], [B.x + 250, B.y + 240, "#9b59d0"]].forEach(([x, y, c]) => movel(x - 14, y - 14, 28, 28, c, { tipo: "pufe" }));
+
+  // Laboratório
+  const L = SALAS.lab;
+  let pc = 1;
+  [L.y + 30, L.y + 140].forEach(by => {
+    movel(L.x + 40, by, 320, 28, "#f2f4f7", { tipo: "bancada" });
+    for (let k = 0; k < 6; k++) moveis.push({ x: L.x + 50 + k * 53, y: by + 3, w: 30, h: 14, tipo: "pc", n: pc++ });
+  });
+  movel(L.x + 270, L.y + 225, 90, 36, "#8a5a33", { tipo: "mesa" });
+
+  // Coordenação
+  const C = SALAS.coord;
+  movel(C.x + 110, C.y + 120, 110, 40, "#8a5a33", { tipo: "mesa" });
+  movel(C.x + 240, C.y + T + 2, 90, 26, "#7a4f2c", { tipo: "armario" });
+  movel(C.x + 300, C.y + 70, 30, 30, "#3f7d3a", { tipo: "planta" });
+  movel(C.x + 240, C.y + 268, 90, 30, "#8a5a33", { tipo: "mesa" });
+
+  // marquise
+  pisos.push({ x: 80, y: 360, w: 1360, h: 56, tipo: "marquise" });
+  for (let x = 120; x <= 1400; x += 160) movel(x, 408, 10, 10, "#e9e6dc", { tipo: "pilar" });
+
+  // pátio coberto
+  pisos.push({ x: 600, y: 540, w: 300, h: 190, tipo: "cobertura" });
+  [[600,540],[890,540],[600,720],[890,720]].forEach(([x,y]) => movel(x, y, 10, 10, "#e9e6dc", { tipo: "pilar" }));
+  movel(630, 590, 90, 18, "#9c6b3f", { tipo: "banco" });
+  movel(780, 590, 90, 18, "#9c6b3f", { tipo: "banco" });
+  movel(630, 670, 90, 18, "#9c6b3f", { tipo: "banco" });
+  movel(780, 670, 90, 18, "#9c6b3f", { tipo: "banco" });
+
+  // parquinho
+  pisos.push({ x: 870, y: 790, w: 200, h: 100, tipo: "areia" });
+  movel(890, 805, 8, 8, "#c0392b", { tipo: "poste" }); movel(980, 805, 8, 8, "#c0392b", { tipo: "poste" });
+  moveis.push({ x: 890, y: 805, w: 98, h: 40, tipo: "balanco" });
+  movel(1010, 800, 40, 70, "#4aa3df", { tipo: "escorrega" });
+  placas.push({ x: 970, y: 776, texto: "Parquinho" });
+
+  movel(470, 930, 150, 14, "#f08a3c", { tipo: "mural" });
+  movel(600, 965, 120, 12, "#ffffff", { tipo: "mapa" });
+  movel(490, 440, 26, 18, "#c7ccd3", { tipo: "bebedouro" });
+  ["#2f6fd1","#d24a4a","#f2c230","#2f9e62"].forEach((c, i) => movel(612 + i * 24, 780, 20, 20, c, { tipo: "reciclagem" }));
+  movel(1070, 1010, 10, 10, "#9aa0a8", { tipo: "mastro" });
+  movel(170, 1018, 110, 18, "#9c6b3f", { tipo: "banco" });
+
+  const fx0 = 1100, fx1 = 1520, fy0 = 460, fy1 = 1000;
+  moveis.push({ tipo: "alambrado", x: fx0, y: fy0, w: fx1 - fx0, h: fy1 - fy0 });
+  solido(fx0, fy0, fx1 - fx0, 4); solido(fx0, fy1, fx1 - fx0, 4); solido(fx1, fy0, 4, fy1 - fy0);
+  solido(fx0, fy0, 4, 220); solido(fx0, fy0 + 320, 4, fy1 - fy0 - 320);
+  movel(1530, 500, 22, 460, "#c4c7cc", { tipo: "arquibancada" });
+  placas.push({ x: 1060, y: 735, texto: "Quadra" });
+
+  [[500, 830], [110, 920], [1000, 470], [300, 450], [1060, 640]].forEach(([x, y]) => { altos.push({ x, y }); solido(x - 7, y - 7, 14, 14); });
+}
+montarEscola();
+
+/* ===================================================================
+   PERSONAGENS
+   =================================================================== */
+const PELE = { clara: "#ffdbac", media: "#f1c27d", morena: "#e0ac69", parda: "#c68642", negra: "#8d5524" };
+const NPCS = [
+  { id: "Nina", x: 225, y: 1010, pele: PELE.morena, camisa: "#ffe066", calca: "#3d5a99", cabelo: "longo", corCabelo: "#3b2414", mochila: "#ff7aa8", triste: true, olhar: "esq" },
+  { id: "Bela", x: 560, y: 650, pele: PELE.negra, camisa: "#ffe066", calca: "#3d5a99", cabelo: "coque", corCabelo: "#1b1414", mochila: "#5ec27a", olhar: "baixo" },
+  { id: "TioZe", x: 970, y: 912, pele: PELE.parda, camisa: "#4a8fd6", calca: "#33333d", cabelo: "curto", corCabelo: "#b9b9b9", adulto: true, vassoura: true, olhar: "baixo" },
+  { id: "ProfaLucia", x: 330, y: 112, pele: PELE.clara, camisa: "#e86a92", calca: "#3a3a44", cabelo: "rabo", corCabelo: "#a0522d", oculos: true, cracha: true, adulto: true, olhar: "baixo" },
+  { id: "Pipo", x: 1150, y: 300, pele: PELE.media, camisa: "#ffe066", calca: "#3d5a99", cabelo: "espetado", corCabelo: "#2d1d12", mochila: "#4aa3df", olhar: "baixo" },
+  { id: "Caio", x: 1300, y: 720, pele: PELE.clara, camisa: "#ff8c42", calca: "#2f5fd0", cabelo: "curto", corCabelo: "#d1a043", olhar: "esq", bola: true },
+  { id: "DiretoraRosa", x: 225, y: 585, pele: PELE.parda, camisa: "#9b59d0", calca: "#2e2e38", cabelo: "coque", corCabelo: "#2a1d18", cracha: true, adulto: true, olhar: "baixo" }
+];
+NPCS.forEach(n => solido(n.x - 9, n.y - 8, 18, 10));
+const jogador = { x: 800, y: 1040, dir: "cima", andando: false };
+const JOGADOR_VISUAL = { pele: PELE.media, camisa: "#ffc93c", calca: "#28335c", cabelo: "curto", corCabelo: "#2d1d12", mochila: "#1f6f5c" };
+
+/* ===================================================================
+   CANVAS
+   =================================================================== */
+const cv = document.getElementById("jogo");
+const ctx = cv.getContext("2d");
+let dpr = 1, larg = 0, alt = 0, zoom = 1;
+function redimensionar() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  larg = window.innerWidth; alt = window.innerHeight;
+  cv.width = Math.round(larg * dpr); cv.height = Math.round(alt * dpr);
+  zoom = Math.max(0.72, Math.min(1.3, Math.min(larg / 900, alt / 620)));
+}
+window.addEventListener("resize", redimensionar);
+redimensionar();
+
+const FONTE = '"Fredoka", "Trebuchet MS", sans-serif';
+function rr(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+function rotulo(texto, x, y, fundo, cor) {
+  ctx.font = `600 13px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const w = ctx.measureText(texto).width + 14;
+  ctx.fillStyle = fundo; rr(x - w / 2, y - 10, w, 20, 5); ctx.fill();
+  ctx.fillStyle = cor; ctx.fillText(texto, x, y + 1); ctx.textBaseline = "alphabetic";
+}
+
+function desenharPisos() {
+  ctx.fillStyle = "#6fa552"; ctx.fillRect(-400, -400, MUNDO.w + 800, MUNDO.h + 800);
+  ctx.fillStyle = "#dcd6c8"; ctx.fillRect(38, 38, MUNDO.w - 76, MUNDO.h - 76);
+  ctx.strokeStyle = "#cfc8b8"; ctx.lineWidth = 1;
+  for (let x = 40; x < MUNDO.w - 38; x += 48) { ctx.beginPath(); ctx.moveTo(x, 38); ctx.lineTo(x, MUNDO.h - 38); ctx.stroke(); }
+  for (let y = 40; y < MUNDO.h - 38; y += 48) { ctx.beginPath(); ctx.moveTo(38, y); ctx.lineTo(MUNDO.w - 38, y); ctx.stroke(); }
+  ctx.fillStyle = "#c9c2b1"; ctx.fillRect(760, 760, 80, 320);
+  for (const p of pisos) {
+    if (p.tipo === "madeira" || p.tipo === "taco") {
+      ctx.fillStyle = p.tipo === "madeira" ? "#c99a63" : "#b07e4f"; ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.strokeStyle = "rgba(90,55,25,.22)";
+      for (let y = p.y; y < p.y + p.h; y += 18) { ctx.beginPath(); ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); ctx.stroke(); }
+    } else if (p.tipo === "carpete") {
+      ctx.fillStyle = "#8d5a7a"; ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.fillStyle = "rgba(255,255,255,.06)";
+      for (let x = p.x; x < p.x + p.w; x += 24) for (let y = p.y; y < p.y + p.h; y += 24) if (((x + y) / 24) % 2 === 0) ctx.fillRect(x, y, 24, 24);
+    } else if (p.tipo === "azulejo") {
+      ctx.fillStyle = "#e9edf2"; ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.strokeStyle = "#d3d9e1";
+      for (let x = p.x; x < p.x + p.w; x += 30) { ctx.beginPath(); ctx.moveTo(x, p.y); ctx.lineTo(x, p.y + p.h); ctx.stroke(); }
+      for (let y = p.y; y < p.y + p.h; y += 30) { ctx.beginPath(); ctx.moveTo(p.x, y); ctx.lineTo(p.x + p.w, y); ctx.stroke(); }
+    } else if (p.tipo === "quadraMargem") { ctx.fillStyle = "#c0674a"; ctx.fillRect(p.x, p.y, p.w, p.h); }
+    else if (p.tipo === "quadra") {
+      ctx.fillStyle = "#3f8f6b"; ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.strokeStyle = "#f4f4f4"; ctx.lineWidth = 3;
+      ctx.strokeRect(p.x + 4, p.y + 4, p.w - 8, p.h - 8);
+      ctx.beginPath(); ctx.moveTo(p.x + 4, p.y + p.h / 2); ctx.lineTo(p.x + p.w - 4, p.y + p.h / 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x + p.w / 2, p.y + p.h / 2, 46, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeRect(p.x + p.w / 2 - 70, p.y + 4, 140, 60); ctx.strokeRect(p.x + p.w / 2 - 70, p.y + p.h - 64, 140, 60);
+      ctx.fillStyle = "#fff"; ctx.fillRect(p.x + p.w / 2 - 45, p.y - 2, 90, 6); ctx.fillRect(p.x + p.w / 2 - 45, p.y + p.h - 4, 90, 6);
+      ctx.lineWidth = 1;
+    } else if (p.tipo === "grama") {
+      ctx.fillStyle = "#86b765"; rr(p.x, p.y, p.w, p.h, 6); ctx.fill();
+      ctx.fillStyle = "rgba(60,110,50,.35)";
+      for (let i = 0; i < 60; i++) ctx.fillRect(p.x + (i * 67) % p.w, p.y + (i * 41) % p.h, 2, 6);
+    } else if (p.tipo === "marquise" || p.tipo === "cobertura") {
+      ctx.fillStyle = "rgba(40,40,60,.10)"; ctx.fillRect(p.x, p.y, p.w, p.h);
+      if (p.tipo === "cobertura") { ctx.strokeStyle = "rgba(40,40,60,.18)"; ctx.setLineDash([6, 6]); ctx.strokeRect(p.x, p.y, p.w, p.h); ctx.setLineDash([]); }
+    } else if (p.tipo === "areia") {
+      ctx.fillStyle = "#f1d9a0"; rr(p.x, p.y, p.w, p.h, 14); ctx.fill();
+      ctx.fillStyle = "rgba(180,140,70,.25)"; for (let i = 0; i < 40; i++) ctx.fillRect(p.x + 8 + (i * 53) % (p.w - 16), p.y + 8 + (i * 29) % (p.h - 16), 3, 3);
+    }
+  }
+}
+
+function desenharMoveis() {
+  for (const m of moveis) {
+    switch (m.tipo) {
+      case "carteira":
+        ctx.fillStyle = "rgba(0,0,0,.12)"; ctx.fillRect(m.x + 2, m.y + 3, m.w, m.h);
+        ctx.fillStyle = m.cor; rr(m.x, m.y, m.w, m.h, 3); ctx.fill();
+        ctx.fillStyle = "#2f63b5"; rr(m.x + m.w / 2 - 10, m.y + m.h + 4, 20, 14, 3); ctx.fill();
+        break;
+      case "mesa": case "armario": case "bancada": case "banco": case "balcao":
+        ctx.fillStyle = "rgba(0,0,0,.14)"; ctx.fillRect(m.x + 3, m.y + 4, m.w, m.h);
+        ctx.fillStyle = m.cor; rr(m.x, m.y, m.w, m.h, 3); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(m.x + 2, m.y + 2, m.w - 4, 4);
+        if (m.tipo === "armario") { ctx.fillStyle = "#d9b23a"; ctx.fillRect(m.x + m.w / 2 - 3, m.y + m.h / 2 - 3, 6, 7); }
+        if (m.tipo === "bancada") { ctx.strokeStyle = "#b7bfca"; ctx.strokeRect(m.x, m.y, m.w, m.h); }
+        if (m.tipo === "balcao") { ctx.fillStyle = "#f6c453"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(m.x + 24 + i * 32, m.y + 10, 5, 0, 7); ctx.fill(); } }
+        break;
+      case "estante": {
+        ctx.fillStyle = "rgba(0,0,0,.14)"; ctx.fillRect(m.x + 3, m.y + 4, m.w, m.h);
+        ctx.fillStyle = m.cor; ctx.fillRect(m.x, m.y, m.w, m.h);
+        const cores = ["#d24a4a", "#2f6fd1", "#f2c230", "#2f9e62", "#9b59d0", "#f08a3c"];
+        for (let x = m.x + 3, i = 0; x < m.x + m.w - 6; x += 7, i++) { ctx.fillStyle = cores[i % cores.length]; ctx.fillRect(x, m.y + 3, 5, m.h - 6); }
+        break;
+      }
+      case "quadro":
+        ctx.fillStyle = "#7a5a33"; ctx.fillRect(m.x - 4, m.y - 2, m.w + 8, m.h + 4);
+        ctx.fillStyle = m.cor; ctx.fillRect(m.x, m.y, m.w, m.h);
+        ctx.fillStyle = "#3a3a3a"; ctx.font = `600 13px ${FONTE}`; ctx.textAlign = "center";
+        ctx.fillText(m.texto, m.x + m.w / 2, m.y + m.h + 16);
+        break;
+      case "pc":
+        ctx.fillStyle = "#20283a"; rr(m.x, m.y, m.w, m.h, 2); ctx.fill();
+        ctx.fillStyle = m.destaque === m.n ? "#7fd1ff" : "#4f7fb8"; ctx.fillRect(m.x + 2, m.y + 2, m.w - 4, m.h - 4);
+        ctx.fillStyle = "#20283a"; ctx.font = `600 9px ${FONTE}`; ctx.textAlign = "center";
+        ctx.fillText(String(m.n).padStart(2, "0"), m.x + m.w / 2, m.y + m.h + 10);
+        ctx.fillStyle = "#4a4a55"; rr(m.x + m.w / 2 - 8, m.y + m.h + 14, 16, 12, 3); ctx.fill();
+        break;
+      case "tapete":
+        ctx.fillStyle = "#f6d365"; rr(m.x, m.y, m.w, m.h, 18); ctx.fill();
+        ctx.strokeStyle = "#e8a33d"; ctx.lineWidth = 4; rr(m.x + 8, m.y + 8, m.w - 16, m.h - 16, 12); ctx.stroke(); ctx.lineWidth = 1;
+        break;
+      case "pufe":
+        ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.beginPath(); ctx.arc(m.x + 16, m.y + 17, 14, 0, 7); ctx.fill();
+        ctx.fillStyle = m.cor; ctx.beginPath(); ctx.arc(m.x + 14, m.y + 14, 14, 0, 7); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.beginPath(); ctx.arc(m.x + 10, m.y + 10, 5, 0, 7); ctx.fill();
+        break;
+      case "poste":
+        ctx.fillStyle = m.cor; ctx.fillRect(m.x, m.y, m.w, m.h);
+        break;
+      case "balanco":
+        ctx.fillStyle = "#c0392b"; ctx.fillRect(m.x, m.y, m.w, 5);
+        ctx.strokeStyle = "#555"; ctx.beginPath(); ctx.moveTo(m.x + 30, m.y + 5); ctx.lineTo(m.x + 30, m.y + 30); ctx.moveTo(m.x + 68, m.y + 5); ctx.lineTo(m.x + 68, m.y + 30); ctx.stroke();
+        ctx.fillStyle = "#3d5a99"; ctx.fillRect(m.x + 22, m.y + 30, 16, 5); ctx.fillRect(m.x + 60, m.y + 30, 16, 5);
+        break;
+      case "escorrega":
+        ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.fillRect(m.x + 3, m.y + 4, m.w, m.h);
+        ctx.fillStyle = "#c0392b"; ctx.fillRect(m.x, m.y, m.w, 16);
+        ctx.fillStyle = m.cor; rr(m.x + 6, m.y + 16, m.w - 12, m.h - 16, 6); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(m.x + 12, m.y + 20, 4, m.h - 26);
+        break;
+      case "planta":
+        ctx.fillStyle = "#b5653a"; ctx.beginPath(); ctx.arc(m.x + 15, m.y + 15, 11, 0, 7); ctx.fill();
+        ctx.fillStyle = m.cor; ctx.beginPath(); ctx.arc(m.x + 15, m.y + 12, 13, 0, 7); ctx.fill();
+        break;
+      case "pilar": case "mastro":
+        ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.fillRect(m.x + 2, m.y + 3, m.w, m.h);
+        ctx.fillStyle = m.cor; ctx.fillRect(m.x, m.y, m.w, m.h);
+        if (m.tipo === "mastro") { ctx.fillStyle = "#2f9e62"; ctx.fillRect(m.x + 10, m.y - 30, 28, 18); }
+        break;
+      case "mural":
+        ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.fillRect(m.x + 3, m.y + 4, m.w, m.h);
+        ctx.fillStyle = m.cor; rr(m.x, m.y, m.w, m.h, 3); ctx.fill();
+        rotulo("FALE COM GENTILEZA", m.x + m.w / 2, m.y - 8, "#f08a3c", "#fff");
+        break;
+      case "mapa":
+        ctx.fillStyle = "#fff"; rr(m.x, m.y, m.w, m.h, 3); ctx.fill(); ctx.strokeStyle = "#1f2a44"; ctx.stroke();
+        rotulo("← Diretoria · Salas ↑ · Parquinho e Quadra →", m.x + m.w / 2, m.y - 8, "#fff", "#1f2a44");
+        break;
+      case "bebedouro": case "reciclagem":
+        ctx.fillStyle = "rgba(0,0,0,.15)"; ctx.fillRect(m.x + 2, m.y + 3, m.w, m.h);
+        ctx.fillStyle = m.cor; rr(m.x, m.y, m.w, m.h, 4); ctx.fill();
+        break;
+      case "arquibancada":
+        for (let i = 0; i < 3; i++) { ctx.fillStyle = ["#d4d7dc","#c4c7cc","#b3b7bd"][i]; ctx.fillRect(m.x + i * 7, m.y, 8, m.h); }
+        break;
+      case "alambrado":
+        ctx.strokeStyle = "rgba(90,95,105,.75)"; ctx.lineWidth = 3; ctx.beginPath();
+        ctx.moveTo(m.x, m.y + 220); ctx.lineTo(m.x, m.y); ctx.lineTo(m.x + m.w, m.y); ctx.lineTo(m.x + m.w, m.y + m.h); ctx.lineTo(m.x, m.y + m.h); ctx.lineTo(m.x, m.y + 320);
+        ctx.stroke(); ctx.lineWidth = 1;
+        break;
+    }
+  }
+}
+
+function desenharParedes() {
+  for (const p of paredes) {
+    if (p.tipo === "muro") {
+      ctx.fillStyle = "#b9553c"; ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.strokeStyle = "rgba(255,230,210,.35)";
+      const horiz = p.w > p.h;
+      for (let i = 0; horiz ? i < p.w : i < p.h; i += 22) { ctx.beginPath(); if (horiz) { ctx.moveTo(p.x + i, p.y); ctx.lineTo(p.x + i, p.y + p.h); } else { ctx.moveTo(p.x, p.y + i); ctx.lineTo(p.x + p.w, p.y + i); } ctx.stroke(); }
+    } else {
+      ctx.fillStyle = "#f1dfae"; ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.fillStyle = "#d5bf86"; ctx.fillRect(p.x, p.y + p.h - 4, p.w, 4);
+      if (p.tipo === "janela") { ctx.fillStyle = "#a9d4ef"; for (let x = p.x + 30; x < p.x + p.w - 40; x += 70) ctx.fillRect(x, p.y + 4, 44, 6); }
+    }
+  }
+  ctx.fillStyle = "#8f3e2b"; ctx.fillRect(738, MUNDO.h - 44, 14, 28); ctx.fillRect(848, MUNDO.h - 44, 14, 28);
+  rotulo("E. E. Escola Conectada", 800, MUNDO.h - 52, "#1f4d8f", "#fff");
+  for (const pl of placas) rotulo(pl.texto, pl.x, pl.y, "#1f4d8f", "#fff");
+}
+
+function desenharArvore(a) {
+  ctx.fillStyle = "rgba(0,0,0,.16)"; ctx.beginPath(); ctx.ellipse(a.x + 6, a.y + 4, 34, 14, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "#6b4426"; ctx.fillRect(a.x - 5, a.y - 26, 10, 28);
+  ctx.fillStyle = "#4f8f3f"; ctx.beginPath(); ctx.arc(a.x, a.y - 44, 32, 0, 7); ctx.fill();
+  ctx.fillStyle = "#62a64e"; ctx.beginPath(); ctx.arc(a.x - 10, a.y - 52, 20, 0, 7); ctx.fill();
+}
+
+function desenharPessoa(p, t, dir, andando) {
+  const esc = p.adulto ? 1.12 : 0.95;
+  const bob = andando ? Math.abs(Math.sin(t * 10)) * 2 : Math.sin(t * 2 + (p.x || 0)) * 0.8;
+  ctx.save(); ctx.translate(p.x, p.y); ctx.scale(esc, esc);
+  ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.ellipse(0, 0, 12, 5, 0, 0, 7); ctx.fill();
+  ctx.translate(0, -bob);
+  const costas = dir === "cima";
+  const lado = dir === "esq" ? -1 : dir === "dir" ? 1 : 0;
+  const pern = andando ? Math.sin(t * 12) * 3 : 0;
+  ctx.fillStyle = p.calca; rr(-7, -12 + pern * 0.3, 6, 12, 2); ctx.fill(); rr(1, -12 - pern * 0.3, 6, 12, 2); ctx.fill();
+  if (p.mochila && costas) { ctx.fillStyle = p.mochila; rr(-9, -30, 18, 16, 4); ctx.fill(); }
+  ctx.fillStyle = p.camisa; rr(-10, -30, 20, 20, 6); ctx.fill(); ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.stroke();
+  ctx.fillStyle = p.adulto ? p.camisa : p.pele;
+  rr(-14, -28, 5, 14, 2.5); ctx.fill(); rr(9, -28, 5, 14, 2.5); ctx.fill();
+  ctx.fillStyle = p.pele; ctx.beginPath(); ctx.arc(-11.5, -13, 2.6, 0, 7); ctx.arc(11.5, -13, 2.6, 0, 7); ctx.fill();
+  if (p.mochila && !costas) { ctx.fillStyle = p.mochila; ctx.fillRect(-8, -30, 3, 14); ctx.fillRect(5, -30, 3, 14); }
+  if (p.gravata && !costas) { ctx.fillStyle = p.gravata; ctx.beginPath(); ctx.moveTo(0, -29); ctx.lineTo(3, -18); ctx.lineTo(0, -15); ctx.lineTo(-3, -18); ctx.closePath(); ctx.fill(); }
+  if (p.cracha && !costas) { ctx.fillStyle = "#fff"; ctx.fillRect(2, -24, 6, 7); ctx.fillStyle = "#2f63b5"; ctx.fillRect(2, -24, 6, 2); }
+  const cy = -41, cab = p.corCabelo;
+  if (p.cabelo === "longo") { ctx.fillStyle = cab; rr(-12, cy - 6, 24, 24, 8); ctx.fill(); }
+  if (p.cabelo === "rabo" && !costas) { ctx.fillStyle = cab; ctx.beginPath(); ctx.ellipse(lado >= 0 ? -12 : 12, cy + 4, 4, 9, 0, 0, 7); ctx.fill(); }
+  ctx.fillStyle = p.pele; ctx.beginPath(); ctx.arc(0, cy, 11, 0, 7); ctx.fill();
+  ctx.fillStyle = cab;
+  if (costas) { ctx.beginPath(); ctx.arc(0, cy, 11.5, 0, 7); ctx.fill(); if (p.cabelo === "rabo") { ctx.beginPath(); ctx.ellipse(0, cy + 10, 4, 8, 0, 0, 7); ctx.fill(); } }
+  else { ctx.beginPath(); ctx.arc(0, cy - 2, 11.6, Math.PI * 1.02, Math.PI * 1.98); ctx.fill(); ctx.fillRect(-11.5, cy - 4, 23, 3); }
+  if (p.cabelo === "coque") { ctx.beginPath(); ctx.arc(0, cy - 13, 5.5, 0, 7); ctx.fill(); }
+  if (p.cabelo === "espetado") { for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * 6 - 4, cy - 9); ctx.lineTo(i * 6, cy - 17); ctx.lineTo(i * 6 + 4, cy - 9); ctx.fill(); } }
+  if (p.touca) { ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.ellipse(0, cy - 9, 12, 6, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(-12, cy - 10, 24, 3); }
+  if (!costas) {
+    const ox = lado * 3;
+    if (p.triste) {
+      ctx.strokeStyle = "#1d1d26"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(ox - 6, cy + 2); ctx.lineTo(ox - 2, cy + 3); ctx.moveTo(ox + 2, cy + 3); ctx.lineTo(ox + 6, cy + 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ox, cy + 9, 3, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      ctx.fillStyle = "#7fc4ff"; ctx.beginPath(); ctx.arc(ox - 5, cy + 6, 1.6, 0, 7); ctx.fill(); ctx.lineWidth = 1;
+    } else {
+      ctx.fillStyle = "#1d1d26"; ctx.beginPath(); ctx.arc(ox - 4, cy + 1, 1.8, 0, 7); ctx.arc(ox + 4, cy + 1, 1.8, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#1d1d26"; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(ox, cy + 4, 3, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke(); ctx.lineWidth = 1;
+      ctx.fillStyle = "rgba(230,110,110,.35)"; ctx.beginPath(); ctx.arc(ox - 7, cy + 4, 2, 0, 7); ctx.arc(ox + 7, cy + 4, 2, 0, 7); ctx.fill();
+    }
+    if (p.oculos) {
+      ctx.strokeStyle = "#1d1d26"; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.arc(ox - 4, cy + 1, 3.6, 0, 7); ctx.moveTo(ox + 7.6, cy + 1); ctx.arc(ox + 4, cy + 1, 3.6, 0, 7); ctx.stroke(); ctx.lineWidth = 1;
+    }
+  }
+  ctx.restore();
+  if (p.vassoura) { ctx.strokeStyle = "#8a5a33"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(p.x + 16, p.y - 44); ctx.lineTo(p.x + 22, p.y - 6); ctx.stroke(); ctx.lineWidth = 1; ctx.fillStyle = "#e0b25a"; ctx.beginPath(); ctx.moveTo(p.x + 16, p.y - 8); ctx.lineTo(p.x + 30, p.y - 8); ctx.lineTo(p.x + 28, p.y + 2); ctx.lineTo(p.x + 16, p.y + 2); ctx.closePath(); ctx.fill(); }
+  if (p.bola) { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(p.x + 18, p.y - 4, 6, 0, 7); ctx.fill(); ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(p.x + 18, p.y - 4, 2.2, 0, 7); ctx.fill(); }
+}
+
+function desenharMarcador(x, y, t, tipo) {
+  const dy = Math.sin(t * 4) * 3;
+  ctx.save(); ctx.translate(x, y + dy);
+  ctx.fillStyle = tipo === "!" ? "#ffc93c" : "#ffffff"; ctx.strokeStyle = "#1f2a44"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, 10, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#1f2a44"; ctx.font = `700 14px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(tipo, 0, 1); ctx.restore(); ctx.textBaseline = "alphabetic";
+}
+function desenharNome(texto, x, y) {
+  ctx.font = `600 12px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const w = ctx.measureText(texto).width + 10;
+  ctx.fillStyle = "rgba(31,42,68,.82)"; rr(x - w / 2, y - 8, w, 16, 8); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.fillText(texto, x, y + 0.5); ctx.textBaseline = "alphabetic";
+}
+
+/* ===================================================================
+   LÓGICA
+   =================================================================== */
+const estadoNPC = id => HIST.npcs[id].estados.find(s => temTodas(s.requer));
+function temNovidade(id) { const s = estadoNPC(id); return !!s && ((s.entrevista && !tem(s.entrevista.concede)) || (s.abreFinal && !estado.concluido)); }
+function proximoPasso() {
+  if (estado.concluido) return "Caso resolvido! Converse com a turma ou jogue de novo pelo Menu.";
+  if (!tem("Sentimento")) return "Encontre a Nina. Ela está sozinha no cantinho perto do muro, à esquerda do portão.";
+  if (!tem("ChatDoJogo")) return "Fale com a Bela, amiga da Nina, no pátio coberto.";
+  if (!tem("ViuNoTablet")) return "Converse com o Tio Zé, perto do parquinho.";
+  if (!tem("RegraDaTurma")) return "Fale com a Profa. Lúcia, na Sala do 4º ano.";
+  if (!tem("ConversaPipo")) return "Converse com o Pipo, na Sala de Informática.";
+  if (!tem("DesculpasCaio")) return "Fale com o Caio, na quadra.";
+  return "Você tem todas as pistas! Vá até a Diretora Rosa, na Diretoria.";
+}
+
+/* ===================================================================
+   INTERFACE BÁSICA
+   =================================================================== */
+const $ = id => document.getElementById(id);
+const ui = { trava: 0, modal: false };
+const podeAndar = () => ui.trava === 0 && !ui.modal;
+function atualizarHud() {
+  $("contPistas").textContent = `${HIST.obrigatorias.filter(tem).length}/${HIST.obrigatorias.length}`;
+  $("objetivoTexto").textContent = proximoPasso();
+}
+function aviso(texto, tipo) {
+  const e = document.createElement("div"); e.className = "aviso " + (tipo || ""); e.textContent = texto;
+  $("avisos").appendChild(e); setTimeout(() => e.remove(), 3800);
+}
+let somLigado = true, audio = null;
+function tom(freqs, dur) {
+  if (!somLigado) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    freqs.forEach((f, i) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = "triangle"; o.frequency.value = f;
+      const t0 = audio.currentTime + i * dur;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+    });
+  } catch (e) {}
+}
+const somErro = () => tom([330, 262], 0.15);
+const somAcerto = () => tom([523, 659, 784], 0.1);
+$("btnSom").addEventListener("click", () => { somLigado = !somLigado; $("btnSom").textContent = "Som: " + (somLigado ? "ligado" : "desligado"); $("btnSom").setAttribute("aria-pressed", String(somLigado)); });
+
+function concederPista(id) {
+  if (!id || tem(id)) return;
+  estado.pistas.add(id); salvar(); atualizarHud();
+  aviso("Nova pista: " + HIST.pistas[id].nome, "pista");
+  tom([660, 880, 1175], 0.12);
+  if (HIST.obrigatorias.every(tem)) setTimeout(() => aviso("Todas as pistas! Vá até a Diretora Rosa."), 900);
+}
+
+let escrevendo = false, pular = false, resolverAvanco = null, falaAtual = "";
+const temVoz = "speechSynthesis" in window;
+function falarTexto(t) {
+  try {
+    const sp = window.speechSynthesis; if (!sp) return;
+    sp.cancel();
+    const u = new SpeechSynthesisUtterance(t); u.lang = "pt-BR"; u.rate = 0.95;
+    const v = sp.getVoices().find(x => x.lang && x.lang.toLowerCase().startsWith("pt")); if (v) u.voice = v;
+    sp.speak(u);
+  } catch (e) {}
+}
+function calarVoz() { try { if (temVoz) window.speechSynthesis.cancel(); } catch (e) {} }
+if (!temVoz) $("dlgOuvir").hidden = true;
+$("dlgOuvir").addEventListener("click", e => { e.stopPropagation(); falarTexto(falaAtual); });
+function escrever(texto) {
+  return new Promise(res => {
+    falaAtual = texto;
+    const e = $("dlgFala"); const letras = [...texto]; let i = 0;
+    escrevendo = true; pular = false; e.textContent = "";
+    const passo = () => {
+      if (pular || i >= letras.length) { e.textContent = texto; escrevendo = false; res(); return; }
+      i++; e.textContent = letras.slice(0, i).join(""); setTimeout(passo, 16);
+    };
+    passo();
+  });
+}
+function avancar() {
+  if ($("dialogo").hidden) return;
+  if (escrevendo) { pular = true; return; }
+  if (resolverAvanco) { calarVoz(); const r = resolverAvanco; resolverAvanco = null; r(); }
+}
+$("dlgSeguir").addEventListener("click", e => { e.stopPropagation(); avancar(); });
+$("dialogo").addEventListener("click", e => { if (!e.target.closest(".escolha") && !e.target.closest("#dlgOuvir")) avancar(); });
+
+async function falar(nome, papel, falas, escolhas) {
+  ui.trava++;
+  $("dlgQuem").innerHTML = ""; $("dlgQuem").append(nome);
+  if (papel) { const s = document.createElement("small"); s.textContent = papel; $("dlgQuem").append(s); }
+  $("dlgEscolhas").innerHTML = ""; $("dialogo").hidden = false;
+  for (let i = 0; i < falas.length; i++) {
+    $("dlgSeguir").hidden = false;
+    await escrever(falas[i]);
+    if (i === falas.length - 1 && escolhas) break;
+    $("dlgSeguir").focus({ preventScroll: true });
+    await new Promise(r => { resolverAvanco = r; });
+  }
+  let escolhida = null;
+  if (escolhas) {
+    $("dlgSeguir").hidden = true;
+    escolhida = await new Promise(res => {
+      escolhas.forEach((t, i) => {
+        const b = document.createElement("button"); b.type = "button"; b.className = "escolha"; b.textContent = t;
+        b.addEventListener("click", e => { e.stopPropagation(); res(i); });
+        $("dlgEscolhas").appendChild(b);
+      });
+      $("dlgEscolhas").firstChild.focus({ preventScroll: true });
+    });
+    $("dlgEscolhas").innerHTML = "";
+  }
+  $("dialogo").hidden = true;
+  ui.trava--;
+  return escolhida;
+}
+
+async function conversar(id) {
+  const npc = HIST.npcs[id]; const s = estadoNPC(id); if (!s) return;
+  ui.trava++;
+  try {
+    tom([520], 0.06);
+    if (s.entrevista) {
+      for (const et of s.entrevista.etapas) {
+        if (et.opcoes) {
+          const i = await falar(npc.nome, npc.papel, et.falas, et.opcoes.map(o => o.texto));
+          const o = et.opcoes[i];
+          await falar(npc.nome, npc.papel, o.resposta);
+          if (!o.correta) { somErro(); return; }
+        } else {
+          if (et.falas) await falar(npc.nome, npc.papel, et.falas);
+          if (et.puzzle) {
+            const ok = await PUZZLES[et.puzzle]();
+            if (!ok) { await falar(npc.nome, npc.papel, ["Tudo bem. Quando quiser, volte aqui e a gente continua."]); return; }
+          }
+        }
+      }
+      concederPista(s.entrevista.concede);
+    } else {
+      await falar(npc.nome, npc.papel, s.falas);
+      if (s.abreFinal) { if (!estado.concluido) await reuniaoFinal(); else await telaVitoria(); }
+    }
+  } finally { ui.trava--; }
+}
+
+/* ===================================================================
+   JANELAS
+   =================================================================== */
+function abrirJanela(montar, classe) {
+  return new Promise(res => {
+    ui.modal = true;
+    const fundo = document.createElement("div"); fundo.className = "fundo-modal";
+    const folha = document.createElement("div"); folha.className = "folha " + (classe || "");
+    folha.setAttribute("role", "dialog"); folha.setAttribute("aria-modal", "true");
+    fundo.appendChild(folha); $("modais").appendChild(fundo);
+    const fechar = valor => { calarVoz(); fundo.remove(); ui.modal = $("modais").children.length > 0; res(valor); };
+    montar(folha, fechar);
+    const foco = folha.querySelector("button, input"); if (foco) foco.focus({ preventScroll: true });
+  });
+}
+function el(tag, props, filhos) {
+  const e = document.createElement(tag);
+  Object.entries(props || {}).forEach(([k, v]) => { if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v); });
+  (filhos || []).forEach(f => f && e.appendChild(typeof f === "string" ? document.createTextNode(f) : f));
+  return e;
+}
+const botao = (texto, classe, acao, extra) => el("button", Object.assign({ class: "btn " + (classe || ""), type: "button", text: texto, onclick: acao }, extra || {}));
+const btnSair = fechar => botao("Sair", "sec", () => fechar(false), { "data-fechar": "1" });
+function cabecalho(f, cfg) {
+  const ouvir = temVoz ? el("button", { class: "btn-ouvir", type: "button", "aria-label": "Ouvir a instrução", text: "🔊 Ouvir", onclick: () => falarTexto(cfg.titulo + ". " + cfg.instrucao) }) : null;
+  f.append(el("div", { class: "linha-selo" }, [el("span", { class: "selo-puzzle", text: "Desafio" }), ouvir]), el("h2", { text: cfg.titulo }), el("p", { class: "sub", text: cfg.instrucao }));
+}
+function embaralhar(a) { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
+function finalizarSucesso(f, fechar, texto) {
+  somAcerto();
+  const r = f.querySelector(".linha-botoes"); r.innerHTML = "";
+  f.querySelectorAll(".explica.final").forEach(x => x.remove());
+  f.insertBefore(el("p", { class: "explica bom final", text: texto }), r);
+  const b = botao("Continuar a entrevista", "", () => fechar(true)); r.appendChild(b); b.focus({ preventScroll: true });
+}
+
+/* --- desafio genérico: montar com fichas (frases e sequências) --- */
+function pzFichas(cfg) {
+  return abrirJanela((f, fechar) => {
+    cabecalho(f, cfg);
+    const fichas = embaralhar(cfg.ordens[0].map((t, i) => ({ t, i })));
+    const escolhidas = [];
+    const area = el("div", { class: "frase-area" + (cfg.vertical ? " vertical" : "") }), banco = el("div", { class: "banco" + (cfg.vertical ? " vertical" : "") });
+    const msg = el("p", { class: "explica", text: cfg.dica });
+    const btDesf = botao("Desfazer", "sec", () => { escolhidas.pop(); desenhar(); });
+    const btOk = botao("Verificar", "", verificar);
+    f.append(el("p", { class: "rotulo", text: cfg.rotuloArea }), area, el("p", { class: "rotulo", text: cfg.rotuloBanco, style: "margin-top:12px" }), banco, msg, el("div", { class: "linha-botoes" }, [btnSair(fechar), btDesf, btOk]));
+    function desenhar(certas) {
+      area.innerHTML = ""; banco.innerHTML = "";
+      if (!escolhidas.length) area.append(el("span", { class: "vazio", text: "Toque nas fichas abaixo." }));
+      escolhidas.forEach((p, i) => area.append(el("span", { class: "ficha colocada" + (certas && i < certas ? " certa" : "") }, [cfg.vertical ? el("b", { text: (i + 1) + ". " }) : null, p.t])));
+      fichas.forEach(p => { if (!escolhidas.includes(p)) banco.append(el("button", { class: "ficha", type: "button", text: p.t, onclick: () => { escolhidas.push(p); tom([523], 0.04); desenhar(); } })); });
+      btOk.disabled = escolhidas.length !== fichas.length; btDesf.disabled = !escolhidas.length;
+    }
+    function verificar() {
+      const atual = escolhidas.map(p => p.t);
+      let melhor = 0;
+      for (const ordem of cfg.ordens) { let k = 0; while (k < atual.length && atual[k] === ordem[k]) k++; melhor = Math.max(melhor, k); }
+      if (melhor === atual.length) { desenhar(melhor); btDesf.remove(); msg.remove(); finalizarSucesso(f, fechar, cfg.sucesso); return; }
+      somErro(); escolhidas.splice(melhor); desenhar(melhor);
+      msg.className = "explica ruim";
+      msg.textContent = melhor ? `${melhor === 1 ? "A primeira ficha está certa" : "As " + melhor + " primeiras fichas estão certas"}. Continue daí!` : "A primeira ficha ainda não está certa. Tente outra!";
+    }
+    desenhar();
+  });
+}
+
+/* --- desafio genérico: escolher a resposta certa em cada item --- */
+function pzEscolhas(cfg) {
+  return abrirJanela((f, fechar) => {
+    let i = 0;
+    function mostrar() {
+      f.innerHTML = ""; cabecalho(f, cfg);
+      const prog = el("div", { class: "progresso" }); cfg.situacoes.forEach((_, k) => prog.appendChild(el("i", { class: k < i ? "feito" : "" })));
+      const s = cfg.situacoes[i];
+      const ops = el("div", { class: "opcoes grandes" });
+      const rod = el("div", { class: "linha-botoes" }, [btnSair(fechar)]);
+      const msg = el("p", { class: "explica", text: "Escolha uma resposta." });
+      f.append(prog, el("p", { class: "rotulo", text: `${cfg.rotuloItem} ${i + 1} de ${cfg.situacoes.length}` }), el("h2", { class: "pergunta", text: s.texto }), ops, msg, rod);
+      s.opcoes.forEach((t, k) => ops.appendChild(el("button", { class: "opcao", type: "button", text: t, onclick: e => {
+        if (k === s.correta) {
+          [...ops.children].forEach(b => b.disabled = true); e.currentTarget.classList.add("certa");
+          msg.className = "explica bom"; msg.textContent = "Isso mesmo! " + s.explicacao; tom([659, 880], 0.1);
+          rod.innerHTML = "";
+          if (i < cfg.situacoes.length - 1) { const prox = botao("Próximo", "", () => { i++; mostrar(); }); rod.appendChild(prox); prox.focus({ preventScroll: true }); }
+          else finalizarSucesso(f, fechar, cfg.fim);
+        } else {
+          e.currentTarget.classList.add("errada"); e.currentTarget.disabled = true; somErro();
+          msg.className = "explica ruim"; msg.textContent = "Ainda não. Tente outra resposta!";
+        }
+      } })));
+    }
+    mostrar();
+  });
+}
+
+/* --- desafio: mensagem gentil ou que machuca --- */
+function pzGentil(cfg) {
+  return abrirJanela((f, fechar) => {
+    cabecalho(f, cfg);
+    let i = 0, acertos = 0;
+    const corpo = el("div", { class: "chat-corpo" });
+    const botoes = el("div", { class: "chat-botoes" });
+    const msg = el("p", { class: "explica", text: "Toque em uma das duas opções." });
+    f.append(el("div", { class: "chat" }, [
+      el("div", { class: "chat-topo" }, [el("div", { class: "av", text: "⚡" }), el("div", {}, [el("b", { text: "Os Raios · chat do time" }), el("small", { text: "BlocoMundo" })])]),
+      corpo, botoes
+    ]), msg, el("div", { class: "linha-botoes" }, [btnSair(fechar)]));
+    function mostrar() {
+      const it = cfg.itens[i];
+      const b = el("div", { class: "bolha" }, [el("div", { class: "autor", text: it.autor }), el("div", { class: "txt", text: it.texto })]);
+      corpo.appendChild(b); corpo.scrollTop = corpo.scrollHeight;
+      botoes.innerHTML = "";
+      const responder = machuca => {
+        const certo = machuca === it.machuca;
+        if (certo) {
+          acertos++; tom([659, 880], 0.08);
+          b.appendChild(el("span", { class: "etq " + (it.machuca ? "machuca" : "ajuda"), text: it.machuca ? "🌧️ Machuca" : "☀️ Gentil" }));
+          msg.className = "explica bom"; msg.textContent = "Certo! " + it.porque;
+          i++;
+          if (i < cfg.itens.length) mostrar();
+          else { botoes.innerHTML = ""; finalizarSucesso(f, fechar, "Você separou todas! Mensagens gentis aproximam as pessoas. Mensagens que machucam afastam."); }
+        } else {
+          somErro(); msg.className = "explica ruim"; msg.textContent = "Pense de novo: como a Nina se sentiria lendo isso?";
+        }
+      };
+      botoes.append(
+        el("button", { class: "btn ok grande", type: "button", text: "☀️ Gentil", onclick: () => responder(false) }),
+        el("button", { class: "btn nao grande", type: "button", text: "🌧️ Machuca", onclick: () => responder(true) })
+      );
+    }
+    mostrar();
+  });
+}
+
+/* --- desafio: jogo da memória --- */
+function pzMemoria(cfg) {
+  return abrirJanela((f, fechar) => {
+    cabecalho(f, cfg);
+    const cartas = embaralhar(cfg.pares.flatMap((p, k) => [{ k, ...p }, { k, ...p }]));
+    let abertas = [], achados = 0, travado = false, jogadas = 0;
+    const grade = el("div", { class: "memoria" });
+    const msg = el("p", { class: "explica", text: "Vire duas cartas." });
+    f.append(grade, msg, el("div", { class: "linha-botoes" }, [btnSair(fechar)]));
+    const botoes = cartas.map((c, idx) => {
+      const b = el("button", { class: "carta", type: "button", "aria-label": "Carta virada para baixo", onclick: () => virar(idx) }, [el("span", { class: "verso", text: "⚡" })]);
+      grade.appendChild(b); return b;
+    });
+    function mostrarFrente(idx) {
+      const c = cartas[idx], b = botoes[idx];
+      b.innerHTML = ""; b.classList.add("aberta"); b.setAttribute("aria-label", c.texto);
+      b.append(el("span", { class: "icone", text: c.icone }), el("span", { class: "legenda", text: c.texto }));
+    }
+    function esconder(idx) { const b = botoes[idx]; b.innerHTML = ""; b.classList.remove("aberta"); b.setAttribute("aria-label", "Carta virada para baixo"); b.append(el("span", { class: "verso", text: "⚡" })); }
+    function virar(idx) {
+      if (travado || abertas.includes(idx) || botoes[idx].classList.contains("par")) return;
+      mostrarFrente(idx); abertas.push(idx); tom([600], 0.04);
+      if (abertas.length < 2) return;
+      jogadas++;
+      const [a, b] = abertas;
+      if (cartas[a].k === cartas[b].k) {
+        botoes[a].classList.add("par"); botoes[b].classList.add("par"); abertas = []; achados++;
+        tom([659, 880], 0.08); msg.className = "explica bom"; msg.textContent = `Par encontrado: ${cartas[a].texto}!`;
+        if (achados === cfg.pares.length) finalizarSucesso(f, fechar, `Você achou todos os pares em ${jogadas} jogadas! Essas regras de ouro protegem você e seus amigos.`);
+      } else {
+        travado = true; msg.className = "explica"; msg.textContent = "Não é par. Tente lembrar onde estava!";
+        setTimeout(() => { esconder(a); esconder(b); abertas = []; travado = false; }, 900);
+      }
+    }
+  });
+}
+
+const PUZZLES = {
+  emocoes: () => pzEscolhas(PZ.emocoes),
+  gentil: () => pzGentil(PZ.gentil),
+  memoria: () => pzMemoria(PZ.memoria),
+  completar: () => pzEscolhas(PZ.completar),
+  sequencia: () => pzFichas(PZ.sequencia),
+  desculpas: () => pzFichas(PZ.desculpas)
+};
+
+/* --- caderno, menu, reunião, vitória, capa --- */
+function abrirCaderno(sobreposto) {
+  if (ui.modal && !sobreposto) return;
+  abrirJanela((f, fechar) => {
+    f.append(el("h2", { text: "Caderno de Pistas" }), el("p", { class: "sub", text: `${HIST.obrigatorias.filter(tem).length} de ${HIST.obrigatorias.length} pistas encontradas` }));
+    HIST.obrigatorias.forEach((id, i) => {
+      const p = HIST.pistas[id], ok = tem(id);
+      f.append(el("div", { class: "pista" + (ok ? "" : " falta") }, [el("span", { class: "n", text: String(i + 1) }), el("h3", { text: ok ? p.nome : "???" }), el("p", { text: ok ? p.desc : "Pista ainda não encontrada." })]));
+    });
+    f.append(el("div", { class: "linha-botoes" }, [botao("Fechar", "", () => fechar(), { "data-fechar": "1" })]));
+  });
+}
+$("btnCaderno").addEventListener("click", () => abrirCaderno(false));
+
+function abrirMenu() {
+  if (ui.modal) return;
+  abrirJanela((f, fechar) => {
+    f.append(
+      el("h2", { text: "Menu" }), el("p", { class: "sub", text: HIST.titulo }),
+      el("p", {}, [el("b", { text: "Como jogar: " }), "ande pela escola, converse com as pessoas e resolva o desafio de cada conversa para ganhar uma pista. O quadro no alto da tela mostra aonde ir."]),
+      el("p", {}, [el("b", { text: "Teclado: " }), "setas ou W A S D para andar, E ou Espaço para conversar, C para o caderno."]),
+      el("p", {}, [el("b", { text: "Celular e tablet: " }), "arraste o dedo na tela para andar e toque no botão amarelo para conversar."]),
+      el("p", {}, [el("b", { text: "Para professores: " }), "versão para 9 e 10 anos. Os 6 desafios trabalham empatia (reconhecer emoções), diferença entre mensagem gentil e mensagem que machuca, regras de ouro da internet, regras da turma, como uma piada cresce quando muitos entram junto e como pedir desculpas. O botão 🔊 lê as falas em voz alta. Nenhum dado do aluno é coletado: o progresso fica só neste navegador."]),
+      el("div", { class: "linha-botoes" }, [botao("Recomeçar do zero", "nao", () => { fechar(); recomecar(); }), botao("Voltar ao jogo", "", () => fechar(), { "data-fechar": "1" })])
+    );
+  });
+}
+$("btnMenu").addEventListener("click", abrirMenu);
+function recomecar() { estado.pistas.clear(); estado.concluido = false; salvar(); jogador.x = 800; jogador.y = 1040; jogador.dir = "cima"; atualizarHud(); aviso("Investigação reiniciada."); }
+
+function reuniaoFinal() {
+  return abrirJanela((f, fechar) => {
+    const P = HIST.final.perguntas; let i = 0, acertos = 0;
+    function mostrar() {
+      f.innerHTML = "";
+      const q = P[i];
+      const prog = el("div", { class: "progresso" }); P.forEach((_, k) => prog.appendChild(el("i", { class: k < i ? "feito" : "" })));
+      const ops = el("div", { class: "opcoes" }), rod = el("div", { class: "linha-botoes" });
+      f.append(prog, el("p", { class: "rotulo", text: `Reunião final · pergunta ${i + 1} de ${P.length}` }), el("h2", { text: q.pergunta }), ops);
+      q.opcoes.forEach((t, k) => ops.appendChild(el("button", { class: "opcao", type: "button", text: t, onclick: () => {
+        const bs = [...ops.children]; bs.forEach(b => b.disabled = true);
+        const certo = k === q.correta; if (certo) acertos++;
+        bs[q.correta].classList.add("certa"); if (!certo) bs[k].classList.add("errada");
+        tom(certo ? [659, 880] : [330, 262], 0.12);
+        f.append(el("div", { class: "explica " + (certo ? "bom" : "ruim") }, [el("b", { text: certo ? "Isso mesmo! " : "Não é bem assim. " }), q.explicacao]), rod);
+        const prox = botao(i < P.length - 1 ? "Próxima pergunta" : "Ver resultado", "", () => { i++; i < P.length ? mostrar() : resultado(); });
+        rod.appendChild(prox); prox.focus({ preventScroll: true });
+      } })));
+    }
+    function resultado() {
+      if (acertos === P.length) { fechar(); estado.concluido = true; salvar(); atualizarHud(); telaVitoria(); return; }
+      f.innerHTML = "";
+      f.append(el("h2", { text: "Quase lá" }), el("p", { class: "sub", text: `Você acertou ${acertos} de ${P.length} perguntas.` }), el("p", { text: "Releia o Caderno de Pistas e tente de novo. Para fechar o caso, todas as respostas precisam estar certas." }),
+        el("div", { class: "linha-botoes" }, [botao("Fechar", "sec", () => fechar(), { "data-fechar": "1" }), botao("Tentar de novo", "", () => { i = 0; acertos = 0; mostrar(); })]));
+    }
+    mostrar();
+  });
+}
+
+function telaVitoria() {
+  tom([523, 659, 784, 1047], 0.14);
+  return abrirJanela((f, fechar) => {
+    const nomeEl = el("div", { class: "nome", text: "Agente Mirim" });
+    const entrada = el("input", { id: "nomeCertificado", type: "text", maxlength: "30", placeholder: "Escreva seu nome aqui", "aria-label": "Seu nome no certificado" });
+    entrada.addEventListener("input", () => { nomeEl.textContent = entrada.value.trim() || "Agente Mirim"; });
+    f.append(
+      el("h2", { text: "Caso resolvido!" }), el("p", { class: "sub", text: "Você ajudou a Nina e toda a turma. Parabéns, Agente Mirim!" }),
+      el("div", { class: "certificado" }, [el("div", { class: "t", text: "Certificado de Agente Mirim" }), nomeEl, el("div", { text: `resolveu "${HIST.titulo}" em ${new Date().toLocaleDateString("pt-BR")}` }), entrada]),
+      ...HIST.final.vitoria.map(t => el("p", { text: t })),
+      el("div", { class: "ajuda-box" }, [el("b", { text: "Se alguém te tratar mal, no jogo ou na escola: " }), "conte para um adulto de confiança, como sua família, sua professora ou a diretora. Você não está sozinho!"]),
+      el("div", { class: "linha-botoes" }, [botao("Jogar de novo", "sec", () => { fechar(); recomecar(); }), botao("Continuar passeando", "", () => fechar(), { "data-fechar": "1" })])
+    );
+  });
+}
+
+function abrirCapa() {
+  const salvo = estado.pistas.size > 0 || estado.concluido;
+  const toque = document.body.classList.contains("toque");
+  abrirJanela((f, fechar) => {
+    f.append(
+      el("span", { class: "selo", text: "Escola Conectada · 9 e 10 anos" }),
+      el("h1", {}, ["O Mistério do ", el("em", { text: "Time" }), " dos Raios"]),
+      ...HIST.intro.map(t => el("p", { text: t })),
+      el("div", { class: "controles" }, [
+        el("div", {}, [el("b", { text: "Andar" }), toque ? "Arraste o dedo na tela" : "Setas ou W A S D"]),
+        el("div", {}, [el("b", { text: "Conversar" }), toque ? "Botão amarelo" : "Tecla E ou Espaço"]),
+        el("div", {}, [el("b", { text: "Caderno de Pistas" }), toque ? "Botão Caderno, no alto" : "Tecla C"])
+      ]),
+      el("div", { class: "linha-botoes" }, [
+        salvo ? botao("Começar do zero", "sec", () => { fechar(); recomecar(); }) : null,
+        botao(salvo ? "Continuar investigação" : "Começar investigação", "", () => { fechar(); tom([523, 784], 0.1); })
+      ])
+    );
+  }, "capa");
+}
+
+/* ===================================================================
+   CONTROLES
+   =================================================================== */
+const teclas = new Set();
+if (window.matchMedia("(pointer: coarse)").matches) { document.body.classList.add("toque"); $("dicaToque").hidden = false; }
+window.addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (e.target.tagName === "INPUT") return;
+  if (!$("dialogo").hidden && (k === "e" || k === " " || k === "enter")) {
+    if (!document.activeElement || !document.activeElement.classList.contains("escolha")) { e.preventDefault(); avancar(); }
+    return;
+  }
+  if (ui.modal) { if (k === "escape") { const fs = $("modais").children; const u = fs[fs.length - 1]; const b = u && u.querySelector("[data-fechar]"); if (b) b.click(); } return; }
+  if (["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(k)) { teclas.add(k); e.preventDefault(); }
+  if ((k === "e" || k === " " || k === "enter") && alvoAtual && podeAndar()) { e.preventDefault(); interagir(); }
+  if (k === "c" && podeAndar()) abrirCaderno(false);
+});
+window.addEventListener("keyup", e => teclas.delete(e.key.toLowerCase()));
+window.addEventListener("blur", () => teclas.clear());
+
+const joy = { ativo: false, id: null, cx: 0, cy: 0, dx: 0, dy: 0 };
+cv.addEventListener("pointerdown", e => {
+  if (!$("dialogo").hidden) { avancar(); return; }
+  if (!podeAndar()) return;
+  joy.ativo = true; joy.id = e.pointerId; joy.cx = e.clientX; joy.cy = e.clientY; joy.dx = joy.dy = 0;
+  cv.setPointerCapture(e.pointerId);
+  const j = $("joy"); j.style.left = e.clientX + "px"; j.style.top = e.clientY + "px"; j.hidden = false; $("joyBola").style.transform = "";
+  $("dicaToque").hidden = true;
+});
+cv.addEventListener("pointermove", e => {
+  if (!joy.ativo || e.pointerId !== joy.id) return;
+  let dx = e.clientX - joy.cx, dy = e.clientY - joy.cy; const d = Math.hypot(dx, dy), max = 45;
+  if (d > max) { dx = dx / d * max; dy = dy / d * max; }
+  joy.dx = dx / max; joy.dy = dy / max; $("joyBola").style.transform = `translate(${dx}px, ${dy}px)`;
+});
+const soltar = e => { if (e.pointerId !== joy.id) return; joy.ativo = false; joy.dx = joy.dy = 0; $("joy").hidden = true; };
+cv.addEventListener("pointerup", soltar); cv.addEventListener("pointercancel", soltar);
+$("interagir").addEventListener("click", () => { if (alvoAtual && podeAndar()) interagir(); });
+
+/* ===================================================================
+   LAÇO DO JOGO
+   =================================================================== */
+let alvoAtual = null;
+function interagir() { const a = alvoAtual; if (!a) return; $("interagir").hidden = true; conversar(a.id); }
+function colide(x, y) { const r = { x: x - 8, y: y - 6, w: 16, h: 8 }; return solidos.some(s => r.x < s.x + s.w && r.x + r.w > s.x && r.y < s.y + s.h && r.y + r.h > s.y); }
+function atualizar(dt) {
+  let vx = 0, vy = 0;
+  if (podeAndar()) {
+    if (teclas.has("arrowleft") || teclas.has("a")) vx -= 1;
+    if (teclas.has("arrowright") || teclas.has("d")) vx += 1;
+    if (teclas.has("arrowup") || teclas.has("w")) vy -= 1;
+    if (teclas.has("arrowdown") || teclas.has("s")) vy += 1;
+    if (joy.ativo) { vx += joy.dx; vy += joy.dy; }
+  }
+  const mag = Math.hypot(vx, vy);
+  jogador.andando = mag > 0.15;
+  if (jogador.andando) {
+    if (mag > 1) { vx /= mag; vy /= mag; }
+    const vel = 170 * dt, nx = jogador.x + vx * vel, ny = jogador.y + vy * vel;
+    if (!colide(nx, jogador.y)) jogador.x = nx;
+    if (!colide(jogador.x, ny)) jogador.y = ny;
+    jogador.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? "esq" : "dir") : (vy < 0 ? "cima" : "baixo");
+  }
+  let melhor = null, dmin = 70;
+  for (const n of NPCS) { const d = Math.hypot(n.x - jogador.x, n.y - jogador.y); if (d < dmin) { dmin = d; melhor = n; } }
+  alvoAtual = melhor;
+  if (melhor && podeAndar()) { $("interagirTexto").textContent = (temNovidade(melhor.id) ? "Entrevistar " : "Conversar com ") + HIST.npcs[melhor.id].nome; $("interagir").hidden = false; }
+  else $("interagir").hidden = true;
+}
+function desenhar(t) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#6fa552"; ctx.fillRect(0, 0, larg, alt);
+  const vw = larg / zoom, vh = alt / zoom;
+  let camX = jogador.x - vw / 2, camY = jogador.y - vh / 2 - 20;
+  camX = vw >= MUNDO.w ? (MUNDO.w - vw) / 2 : Math.max(-20, Math.min(MUNDO.w - vw + 20, camX));
+  camY = vh >= MUNDO.h ? (MUNDO.h - vh) / 2 : Math.max(-20, Math.min(MUNDO.h - vh + 20, camY));
+  ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, -camX * dpr * zoom, -camY * dpr * zoom);
+  desenharPisos(); desenharMoveis(); desenharParedes();
+  const lista = [];
+  NPCS.forEach(n => lista.push({ y: n.y, f: () => desenharPessoa(n, t, n.olhar, false) }));
+  altos.forEach(a => lista.push({ y: a.y, f: () => desenharArvore(a) }));
+  lista.push({ y: jogador.y, f: () => desenharPessoa(Object.assign({ x: jogador.x, y: jogador.y }, JOGADOR_VISUAL), t, jogador.dir, jogador.andando) });
+  lista.sort((a, b) => a.y - b.y).forEach(e => e.f());
+  NPCS.forEach(n => {
+    const topo = n.y - (n.adulto ? 64 : 58);
+    desenharNome(HIST.npcs[n.id].nome, n.x, topo);
+    if (!estado.concluido && temNovidade(n.id)) desenharMarcador(n.x, topo - 22, t, "!");
+  });
+  if (alvoAtual) { ctx.strokeStyle = "rgba(255,201,60,.9)"; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(alvoAtual.x, alvoAtual.y, 20, 8, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
+}
+let ultimo = performance.now();
+function quadro(agora) { const dt = Math.min(0.05, (agora - ultimo) / 1000); ultimo = agora; atualizar(dt); desenhar(agora / 1000); requestAnimationFrame(quadro); }
+
+function iniciar(dados) {
+  const salvo = (dados && Array.isArray(dados.pistas)) ? dados : carregarSalvo();
+  if (salvo) { salvo.pistas.forEach(id => HIST.pistas[id] && estado.pistas.add(id)); estado.concluido = !!salvo.concluido; }
+  if (dados && typeof dados.x === "number") { jogador.x = dados.x; jogador.y = dados.y; }
+  atualizarHud(); requestAnimationFrame(quadro);
+  if (!dados || typeof dados.x !== "number") abrirCapa();
+}
+try { window.claude?.hot?.snapshot?.(() => ({ pistas: [...estado.pistas], concluido: estado.concluido, x: jogador.x, y: jogador.y })); } catch (e) {}
+const comecar = () => { const h = window.claude?.hot; if (h?.ready) h.ready(iniciar); else iniciar(h?.data); };
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(comecar, comecar);
+})();
+</script>
+</body></html>
